@@ -19,6 +19,28 @@ def draw(stdscr, buffer, cursor_x, cursor_y, mode, status, scroll):
 	stdscr.move(cursor_y - scroll, cursor_x)
 	stdscr.refresh()
 
+def get_key(stdscr):
+    ch = stdscr.getch()
+
+    if ch == 27:
+        stdscr.nodelay(True)
+        next1 = stdscr.getch()
+        next2 = stdscr.getch()
+        next3 = stdscr.getch()
+        stdscr.nodelay(False)
+
+        seq = (next1, next2, next3)
+
+        if seq == (91, 49, 59):
+            fourth = stdscr.getch()
+            if fourth == 68:
+                return "CTRL_LEFT"
+            elif fourth == 67:
+                return "CTRL_RIGHT"
+        return "ESC"
+    else:
+        return ch
+
 def openFile(filename):
 	try:
 		with open(filename, 'r') as f:
