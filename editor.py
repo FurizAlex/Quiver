@@ -1,4 +1,5 @@
 import curses
+import re
 
 def draw(stdscr, buffer, cursor_x, cursor_y, mode, status, scroll):
 	stdscr.clear()
@@ -9,7 +10,10 @@ def draw(stdscr, buffer, cursor_x, cursor_y, mode, status, scroll):
 		if i < h - 1:
 			stdscr.addstr(i, 0, line)
 
-	status_line = f"-- {mode} -- {status} | {cursor_x} : {cursor_y + 1}"
+	if mode == "COMMAND":
+		status = status
+	else:
+		status_line = f"-- {mode} -- {status} | {cursor_x} : {cursor_y + 1}"
 	stdscr.addstr(h - 1, 0, status[:w - 1])
 
 	stdscr.move(cursor_y - scroll, cursor_x)
@@ -30,13 +34,31 @@ def saveFile(filename, buffer):
 	except Exception as e:
 		return f"Error: Saving file: {e}"
 
+def nextWordStart(line, pos):
+	match = re.search(r'\w\w*', line[pos + 1:])
+	return pos + 1 + match.start() if match else len(line)
+
+def nextWordEnd(line, pos):
+	match = re.search(r'\w\w*', line[pos + 1:])
+	if match:
+		return pos + 1 + match.start() + len(match.group())
+	return len(line)
+
+def prevWordStart(line, pos):
+	for i in range(pos - 1, -1, -1):
+		if re.match(r'\w', line[i]) and (i == 0 or not re.match(r'\w', line[i - 1])):
+			return i
+	return 0
+
 def main(stdscr):
 	curses.curs_set(1)
 	stdscr.keypad(True)
 	curses.raw()
 	curses.noecho()
 
+	gBuffer = ""
 	buffer = [""]
+	bookmarks = {}
 	cursor_x, cursor_y = 0, 0
 	mode = "NORMAL"
 	scroll = 0
@@ -57,6 +79,8 @@ def main(stdscr):
 
 		if mode == "NORMAL":
 			match ch:
+				case 27:
+					running = False
 				case 58:
 					mode = "COMMAND"
 					command = ""
@@ -64,20 +88,97 @@ def main(stdscr):
 				case 105:
 					mode = "WRITE"
 					status = "-- WRITE --"
-				case 113:
-					running = False
+
+				case 119:
+					line = buffer[cursor_y]
+					cursor_x = nextWordStart(line, cursor_x)
+					gBuffer = ""
+				case 101:
+					line = buffer[cursor_y]
+					cursor_x = nextWordEnd(line, cursor_x)
+					gBuffer = ""
+				case 98:
+					line = buffer[cursor_y]
+					cursor_x = prevWordStart(line, cursor_x)
+					gBuffer = ""
+
+				case 109:
+					stdscr.addstr(h - 1, 0, "Bookmark: ")
+					stdscr.refresh()
+					mark = stdscr.getch()
+					bookmarks[chr(mark)] = (cursor_y, cursor_x)
+				case 39:
+					mark = stdscr.getch()
+					key = chr(mark)
+					if key in bookmarks:
+						cursor_y, cursor_x = bookmarks[key]
+
+				case 153:
+					cursor_y = max(0, cursor_y - 1)
+					cursor_x = min(cursor_x, len(buffer[cursor_y]))
+					gBuffer = ""
+				case 152:
+					cursor_y = min(len(buffer) - 1, cursor_y + 1)
+					cursor_x = min(cursor_x, len(buffer[cursor_y]))
+					gBuffer = ""
+				case 150:
+					cursor_x = max(0, cursor_x - 1)
+					gBuffer = ""
+				case 154:
+					cursor_x = min(len(buffer[cursor_y]), cursor_x + 1)
+					gBuffer = ""
+				case 48:
+					cursor_x = 0
+					gBuffer = ""
+				case 94:
+					line = buffer[cursor_y]
+					cursor_x = len(line) - len(line.lstrip())
+					gBuffer = ""
+				case 36:
+					cursor_x = len(buffer[cursor_y])
+					gBuffer = ""
+				case 71:
+					cursor_y = len(buffer) - 1
+					cursor_x = min(cursor_x, len(buffer[cursor_y]))
+					gBuffer = ""
+				case 103:
+					if gBuffer == 'g':
+						cursor_y = 0
+						cursor_x = min(cursor_x, len(buffer[0]))
+						gBuffer = ""
+					else:
+						gBuffer = 'g'
+
+				case 4:
+					cursor_y = min(len(buffer) - 1, cursor_y + h // 2)
+				case 21:
+					cursor_y = max(0, cursor_y - h // 2)
+
 				case curses.KEY_UP:
 					cursor_y = max(0, cursor_y - 1)
+					cursor_x = min(cursor_x, len(buffer[cursor_y]))
+					gBuffer = ""
 				case curses.KEY_DOWN:
 					cursor_y = min(len(buffer) - 1, cursor_y + 1)
+					cursor_x = min(cursor_x, len(buffer[cursor_y]))
+					gBuffer = ""
 				case curses.KEY_LEFT:
 					cursor_x = max(0, cursor_x - 1)
+					gBuffer = ""
 				case curses.KEY_RIGHT:
 					cursor_x = min(len(buffer[cursor_y]), cursor_x + 1)
+					gBuffer = ""
+				case _:
+					gBuffer = ""
 		
 		elif mode == "COMMAND":
 			if ch == 10:
-				if command.startswith("e "):
+				if command.isdigit():
+					line_num = int(command)
+					if 1 <= line_num <= len(buffer):
+						cursor_y = line_num - 1
+						cursor_x = min(cursor_x, len(buffer[cursor_y]))
+				elif command.startswith("open "):
 					filename = command[2:].strip()
 					buffer = openFile(filename)
 					cursor_x, cursor_y, scroll = 0, 0, 0
@@ -85,19 +186,21 @@ def main(stdscr):
 
 				elif command == "s":
 					if filename:
-						status = saveFile(filename)
+						status = saveFile(filename, buffer)
 					else:
 						status = "Error: No file name"
 
 				elif command == "sq":
 					if filename:
-						status = saveFile(filename)
+						status = saveFile(filename, buffer)
 					running = False
 				elif command == "q":
 					running = False
 				else:
 					status = f"Error: unknown command: {command}"
 				mode = "NORMAL"
+				status = ""
+
 			elif ch == 27:
 				mode = "NORMAL"
 				status = ""
@@ -143,6 +246,7 @@ def main(stdscr):
 					buffer.insert(cursor_y + 1, line[cursor_x:])
 					cursor_y += 1
 					cursor_x = 0
+
 				case curses.KEY_UP:
 					cursor_y = max(0, cursor_y - 1)
 				case curses.KEY_DOWN:
@@ -151,6 +255,7 @@ def main(stdscr):
 					cursor_x = max(0, cursor_x - 1)
 				case curses.KEY_RIGHT:
 					cursor_x = min(len(buffer[cursor_y]), cursor_x + 1)
+
 			if 32 <= ch <= 126:
 				line = buffer[cursor_y]
 				buffer[cursor_y] = line[:cursor_x] + chr(ch) + line[cursor_x:]
