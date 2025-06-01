@@ -77,19 +77,18 @@ def Python_hl(line):
 	return highlightCode(line, keywords)
 
 def highlightLine(line, filetype):
-	match filetype:
-		case "python":
+		if filetype == "python":
 			return Python_hl(line)
-		case "c":
+		elif filetype == "c":
 			return C_hl(line)
-		case "javascript":
+		elif filetype == "javascript":
 			return Javascript_hl(line)
-		case "typescript":
+		elif filetype == "typescript":
 			return Typescript_hl(line)
-		case _:
+		else:
 			return [(line, 4)]
 
-def highlightCode(line):
+def highlightCode(line, keywords):
 	tokens = []
 	i = 0
 
@@ -130,12 +129,8 @@ def draw(stdscr, buffer, cursor_x, cursor_y, mode, status, scroll, filetype):
 				stdscr.addstr(i, x, token, curses.color_pair(color))
 				x += len(token)
 
-	if mode == "COMMAND":
-		status = status
-	else:
-		status_line = f"-- {mode} -- {status} | {cursor_x} : {cursor_y + 1}"
+	status_line = f"-- {mode} -- {status} | {cursor_x} : {cursor_y} | {filetype}"
 	stdscr.addstr(h - 1, 0, status[:w - 1])
-
 	stdscr.move(cursor_y - scroll, cursor_x)
 	stdscr.refresh()
 
@@ -144,19 +139,8 @@ def get_key(stdscr):
 
     if ch == 27:
         stdscr.nodelay(True)
-        next1 = stdscr.getch()
-        next2 = stdscr.getch()
-        next3 = stdscr.getch()
         stdscr.nodelay(False)
 
-        seq = (next1, next2, next3)
-
-        if seq == (91, 49, 59):
-            fourth = stdscr.getch()
-            if fourth == 68:
-                return "CTRL_LEFT"
-            elif fourth == 67:
-                return "CTRL_RIGHT"
         return "ESC"
     else:
         return ch
@@ -241,7 +225,6 @@ def main(stdscr):
 	running = True
 	filename = None
 	command = ""
-	filetype = getFileType(filename)
 
 	def saveUndoState():
 		undo_stack.append((buffer.copy(), cursor_x, cursor_y))
@@ -277,6 +260,7 @@ def main(stdscr):
 		elif cursor_y >= scroll + h - 1:
 			scroll = cursor_y - (h - 2)
 
+		filetype = getFileType(filename)
 		draw(stdscr, buffer, cursor_x, cursor_y, mode, status, scroll, filetype)
 		ch = stdscr.getch()
 
@@ -410,7 +394,7 @@ def main(stdscr):
 					if 1 <= line_num <= len(buffer):
 						cursor_y = line_num - 1
 						cursor_x = min(cursor_x, len(buffer[cursor_y]))
-				elif command.startswith("open "):
+				elif command.startswith("op "):
 					filename = command[2:].strip()
 					buffer = openFile(filename)
 					cursor_x, cursor_y, scroll = 0, 0, 0
@@ -478,10 +462,18 @@ def main(stdscr):
 					pushUndo()
 					line = buffer[cursor_y]
 					indent = re.match(r'^\s*', line).group(0)
-					buffer[cursor_y] = line[:cursor_x]
-					buffer.insert(cursor_y + 1, indent + line[cursor_x:])
-					cursor_y += 1
-					cursor_x = len(indent)
+
+					if cursor_x > 0 and line[cursor_x - 1] == '{':
+						buffer[cursor_y] = line[:cursor_x]
+						buffer.insert(cursor_y + 1, indent + "    ")
+						buffer.insert(cursor_y + 2, indent + "}")
+						cursor_y += 1
+						cursor_x = len(indent) + 4
+					else:
+						buffer[cursor_y] = line[:cursor_x]
+						buffer.insert(cursor_y + 1, indent + line[cursor_x:])
+						cursor_y += 1
+						cursor_x = len(indent)
 
 				case 9:
 					pushUndo()
