@@ -2,7 +2,10 @@ class Buffer:
 	def __init__(self):
 		self.lines = [""]
 
-	def insert_char(self, x, y, char):
+	def currentLine(self, y):
+		return self.lines[y]
+
+	def insertChar(self, x, y, char):
 		line = self.lines[y]
 
 		self.lines[y] = (
@@ -11,7 +14,7 @@ class Buffer:
 			line[x:]
 		)
 
-	def delete_char(self, x, y):
+	def deleteChar(self, x, y):
 		line = self.lines[y]
 	
 		if x > 0:
@@ -20,7 +23,7 @@ class Buffer:
 				line[x:]
 			)
 
-	def split_line(self, x, y):
+	def splitLine(self, x, y):
 		line = self.lines[y]
 
 		left = line[:x]
@@ -29,7 +32,7 @@ class Buffer:
 		self.lines[y] = left
 		self.lines.insert(y + 1, right)
 
-	def merge_line(self, y):
+	def mergeLine(self, y):
 		if y <= 0:
 			return
 

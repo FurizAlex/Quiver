@@ -1,5 +1,5 @@
-from util.fileio import open_file
-from util.fileio import save_file
+from util.fileio import openFile
+from util.fileio import saveFile
 
 def handle(editor, key):
 	if key == 27:
@@ -9,19 +9,19 @@ def handle(editor, key):
 		command = editor.command.strip()
 
 		if command == "q":
-			editor.running = false
+			editor.running = False
 
 		elif command.startswith("o "):
 			filename = command[2:].strip()
 
-			editor.buffer.lines = open_file(filename)
+			editor.buffer.lines = openFile(filename)
 
 			editor.filename = filename
 
 			editor.status = f"Opened {filename}"
 		elif command == "w":
 			if editor.filename:
-				editor.status = save_file(
+				editor.status = saveFile(
 					editor.filename,
 					editor.buffer.lines
 				)

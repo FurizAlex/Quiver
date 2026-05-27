@@ -1,27 +1,27 @@
 class History:
 	def __init__(self):
-		self.undo_stack = []
-		self.redo_stack = []
+		self.undoStack = []
+		self.redoStack = []
 
-	def push(self, bufferLines, x, y):
+	def push(self, lines, x, y):
 		state = (
-			bufferLines.copy(),
+			lines.copy(),
 			x,
 			y
 		)
-		self.undo_stack.append(state)
-		self.redo_stack.clear()
+		self.undoStack.append(state)
+		self.redoStack.clear()
 
 	def undo(self, currentState):
-		if not self.undo_stack:
+		if not self.undoStack:
 			return currentState
 
-		self.redo_stack.append(currentState)
-		return self.undo_stack.pop()
+		self.redoStack.append(currentState)
+		return self.undoStack.pop()
 
 	def redo(self, currentState):
-		if not self.redo_stack:
+		if not self.redoStack:
 			return currentState
 
-		self.undo_stack.append(currentState)
-		return self.redo_stack.pop()
+		self.undoStack.append(currentState)
+		return self.redoStack.pop()

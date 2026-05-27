@@ -26,16 +26,16 @@ def handle(editor, key):
 			)
 
 			if cursor.x > 0:
-				buffer.delete_char(cursor.x, cursor.y)
-				cursor.move_left()
+				buffer.deleteChar(cursor.x, cursor.y)
+				cursor.moveLeft()
 
 			elif cursor.y > 0:
-				previous_length = len(buffer.lines[cursor.y - 1])
+				previousLength = len(buffer.lines[cursor.y - 1])
 
-				buffer.merge_line(cursor.y)
+				buffer.mergeLine(cursor.y)
 
 				cursor.y -= 1
-				cursor.x = previous_length
+				cursor.x = previousLength
 		case 10:
 			history.push(
 				buffer.lines,
@@ -43,23 +43,36 @@ def handle(editor, key):
 				cursor.y
 			)
 
-			buffer.split_line(cursor.x, cursor.y)
+			line = buffer.currentLine(cursor.y)
+			indent = ""
 
+			for char in line:
+				if char in (' ', '\t'):
+					indent += char
+				else:
+					break
+			if cursor.x > 0 and line[cursor.x - 1] == '{':
+				indent += "    "
+			buffer.splitLine(cursor.x, cursor.y)
+
+			buffer.lines[cursor.y + 1] = (
+				indent + buffer.lines[cursor.y + 1]
+			)
 			cursor.y += 1
-			cursor.x = 0
+			cursor.x = len(indent)
 
 		case curses.KEY_LEFT:
-			cursor.move_left()
+			cursor.moveLeft()
 
 		case curses.KEY_RIGHT:
-			line = buffer.current_line(cursor.y)
-			cursor.move_right(len(line))
+			line = buffer.currentLine(cursor.y)
+			cursor.moveRight(len(line))
 
 		case curses.KEY_UP:
-			cursor.move_up()
+			cursor.moveUp()
 
 		case curses.KEY_DOWN:
-			cursor.move_down(len(buffer.lines))
+			cursor.moveDown(len(buffer.lines))
 
 		case 26:
 			current_state = (
@@ -98,8 +111,8 @@ def handle(editor, key):
 				if char in PAIRS:
 					closing = PAIRS[char]
 
-					buffer.insert_char(cursor.x, cursor.y, char + closing)
+					buffer.insertChar(cursor.x, cursor.y, char + closing)
 					cursor.x += 1
 				else:
-					buffer.insert_char(cursor.x, cursor.y, char)
+					buffer.insertChar(cursor.x, cursor.y, char)
 					cursor.x += 1
