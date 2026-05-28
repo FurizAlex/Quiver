@@ -45,3 +45,19 @@ class Buffer:
 		self.lines[y - 1] += self.lines[y]
 		self.lines.pop(y)
 		self.modified = True
+
+	def getSelection(self, sx, sy, ex, ey):
+		lines = []
+
+		for y in range(sy, ey + 1):
+			line = self.lines[y]
+
+			if y == sy and y == ey:
+				lines.append(line[sx:ex])
+			elif y == sy:
+				lines.append(line[sx:])
+			elif y == ey:
+				lines.append(line[:ex])
+			else:
+				lines.append(line)
+		return "\n".join(lines)

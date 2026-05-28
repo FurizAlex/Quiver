@@ -1,4 +1,5 @@
 import curses
+import signal
 import os
 
 from core.buffer import Buffer
@@ -21,21 +22,18 @@ class Editor:
 	def __init__(self, stdscr):
 		self.stdscr = stdscr
 
-		curses.cbreak()
+		curses.cbreak
 		curses.noecho()
 		curses.curs_set(1)
 
 		stdscr.keypad(True)
+		curses.mousemask(curses.ALL_MOUSE_EVENTS)
 		stdscr.timeout(16)
 
 		curses.start_color()
 		curses.use_default_colors()
 
-		curses.init_pair(1, curses.COLOR_CYAN, -1)
-		curses.init_pair(2, curses.COLOR_GREEN, -1)
-		curses.init_pair(3, curses.COLOR_YELLOW, -1)
-		curses.init_pair(4, curses.COLOR_WHITE, -1)
-		curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_CYAN)
+		signal.signal(signal.SIGTSTP, signal.SIG_IGN)
 
 		self.buffers = [Buffer()]
 		self.currentBuffer = 0
@@ -44,11 +42,14 @@ class Editor:
 		self.panes = [Pane(0)]
 		self.activePane = 0
 
+		self.statusTimer = 0
+
 		self.selection = Selection()
 		self.clipboard = Clipboard()
 
 		self.settings = Settings()
 		self.theme = Theme()
+		self.theme.load("amiga")
 		self.theme.initialize()
 		self.renderer = Renderer(stdscr)
 
@@ -72,9 +73,13 @@ class Editor:
 		self.paletteSelection = 0
 
 		self.mode = "INSERT"
+		self.focus = "editor"
 		self.running = True
 		self.filename = None
 		self.status = "WELCOME TO QUIVER"
+
+		self.saving = False
+		self.saveInput = ""
 
 		self.command = ""
 
@@ -84,6 +89,11 @@ class Editor:
 	
 	def run(self):
 		while self.running:
+			if self.statusTimer > 0:
+				self.statusTimer -= 1
+
+				if self.statusTimer == 0:
+					self.status = ""
 			self.updateScroll()
 			self.renderer.draw(self)
 			key = self.stdscr.getch()
@@ -93,6 +103,10 @@ class Editor:
 		from input.insertMode import handle
 		from input.paletteMode import handle as handlePalette
 
+		if key  == curses.KEY_MOUSE:
+			from input.mouseMode import handle
+			handle(self)
+			return
 		if self.paletteOpen:
 			try:
 				handlePalette(self, key)
@@ -100,7 +114,15 @@ class Editor:
 				self.paletteOpen = False
 				self.status = str(e)
 			return
+		if self.focus == "explorer":
+			from input.explorerMode import handle
+			handle(self, key)
+			return
+		if self.saving:
+			from input.saveMode import handle
 
+			handle(self, key)
+			return
 		handle(self, key)
 
 	def updateScroll(self):

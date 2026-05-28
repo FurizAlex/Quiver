@@ -31,4 +31,4 @@ class Selection:
 		if start > end:
 			start, end = end, start
 		
-		return start, end
+		return (start[1], start[0], end[1], end[0])

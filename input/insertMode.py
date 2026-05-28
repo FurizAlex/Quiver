@@ -30,6 +30,11 @@ def handle(editor, key):
 	cursorX = pane.cursorX
 	cursorY = pane.cursorY
 
+	cursor = editor.cursor
+	buffer = editor.buffer
+	selection = editor.selection
+	clipboard = editor.clipboard
+
 	if key == CTRL_Q:
 		editor.running = False
 		return
@@ -74,15 +79,52 @@ def handle(editor, key):
 		nextBuffer(editor)
 	elif key == curses.KEY_F1:
 		previousBuffer(editor)
+	elif key == 9:
+		if editor.focus == "editor":
+			editor.focus = "explorer"
+		else:
+			editor.focus = "editor"
+	elif key == 1:
+		if editor.selection.active:
+			editor.selection.clear()
+			editor.status = "Selection Cleared"
+		else:
+			editor.selection.begin(cursor.x, cursor.y)
+
+			editor.status = "Selection Started"
+		editor.statusTimer = 60
+	elif key == 3:
+		if editor.selection.active:
+			sx, sy, ex, ey = (editor.selection.normalized())
+
+			text = buffer.getSelection(sx, sy, ex, ey)
+
+			editor.clipboard.copy(text)
+			editor.status = "Copied"
+			editor.statusTimer = 60
+	elif key == 22:
+		text = editor.clipboard.paste()
+
+		buffer.insertChar(cursor.x, cursor.y, text)
+		cursor.x += len(text)
+
+		editor.status = "Pasted"
+		editor.statusTimer = 60
 
 	# -------------------------
 	# MOVEMENT
 	# -------------------------
 	elif key == curses.KEY_LEFT:
 		pane.moveLeft()
+
+		if selection.active:
+			selection.update(cursor.x, cursor.y)
 	elif key == curses.KEY_RIGHT:
 		line = buffer.currentLine(cursorY)
 		pane.moveRight(len(line))
+	
+		if selection.active:
+			selection.update(cursor.x, cursor.y)
 	elif key == curses.KEY_UP:
 		pane.moveUp()
 
@@ -91,6 +133,9 @@ def handle(editor, key):
 			pane.cursorX,
 			len(line)
 		) 
+
+		if selection.active:
+			selection.update(cursor.x, cursor.y)
 	elif key == curses.KEY_DOWN:
 		pane.moveDown(len(buffer.lines))
 
@@ -100,6 +145,9 @@ def handle(editor, key):
 			pane.cursorX,
 			len(line)
 		)
+
+		if selection.active:
+			selection.update(cursor.x, cursor.y)
 
 	# -----------------------------
 	# BACKSPACE

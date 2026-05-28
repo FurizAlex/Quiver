@@ -54,7 +54,7 @@ class Renderer:
 			lineNumberWidth = 6
 
 			for screenY, line in enumerate(visibleLines):
-				bufferY = screenY + editor.scrollY
+				bufferY = screenY + pane.scrollY
 
 				lineNumber = str(bufferY + 1).rjust(4) + " "
 
@@ -70,21 +70,45 @@ class Renderer:
 
 				x = startX + lineNumberWidth
 				tokens = self.lexer.tokenize(line, "python")
-				lineAttr = curses.A_NORMAL
+				lineAttr = 0
 
 				if paneIndex == editor.activePane:
 					if bufferY == pane.cursorY:
-						lineAttr = curses.color_pair(5)
-				for token, color in tokens:
+						lineAttr |= editor.theme.get("cursorline")
+				for token, tokenType in tokens:
 					if x >= w - 1:
 						break
 					try:
-						self.stdscr.addstr(
-							screenY + 1,
-							x,
-							token,
-							curses.color_pair(color) | lineAttr
-						)
+						attr = editor.theme.get(tokenType)
+
+						if editor.selection.active:
+							sx, sy, ex, ey = (editor.selection.normalized())
+
+							tokenStart = x
+							tokenEnd = x + len(token)
+
+							inSelection = False
+							
+							if sy <= bufferY <= ey:
+								inSelection = (tokenEnd > sx + lineNumberWidth
+								and tokenStart < ex + lineNumberWidth
+								)
+								if sy == ey:
+									inSelection = (tokenEnd > sx + lineNumberWidth and tokenStart < ex + lineNumberWidth)
+								elif bufferY == sy:
+									inSelection = (tokenEnd < sx + lineNumberWidth)
+								elif bufferY == ey:
+									inSelection = (tokenStart < ex + lineNumberWidth)
+								else:
+									inSelection = True
+							if inSelection:
+								attr = editor.theme.get("selection")
+							self.stdscr.addstr(
+								screenY + 1,
+								x,
+								token,
+								attr | lineAttr,
+							)
 					except curses.error:
 						pass
 					x += len(token)
@@ -144,9 +168,11 @@ class Renderer:
 				break
 
 			attr = curses.A_NORMAL
-
+			
+			if editor.focus == "explorer":
+				attr |= curses.A_BOLD
 			if i == editor.selectedFileIndex:
-				attr = curses.A_REVERSE
+				attr |= curses.A_REVERSE
 
 			display = file[:width - 3]
 			try:

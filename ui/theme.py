@@ -1,21 +1,41 @@
 import curses
+import importlib
 
 class Theme:
 	def __init__(self):
-		self.colors = {
-			"keyword": curses.COLOR_CYAN,
-			"string": curses.COLOR_GREEN,
-			"comment": curses.COLOR_YELLOW,
-			"text": curses.COLOR_WHITE,
-			"status": curses.COLOR_BLUE
-		}
-	
-	def initialize(self):
-		curses.start_color()
-		curses.use_default_colors()
+		self.current = "amiga"
 
-		curses.init_pair(1, self.colors["keyword"], -1)
-		curses.init_pair(2, self.colors["string"], -1)
-		curses.init_pair(3, self.colors["comment"], -1)
-		curses.init_pair(4, self.colors["text"], -1)
-		curses.init_pair(5, curses.COLOR_BLACK, self.colors["status"])
+		self.pairs = {}
+		self.colors = {}
+	
+	def load(self, name):
+		module = importlib.import_module(
+			f"themes.{name}"
+		)
+		self.colors = module.THEME
+		self.current = name
+
+	def initialize(self):
+		index = 1
+		self.pairs.clear()
+
+		for name, (fg, bg) in self.colors.items():
+			curses.init_pair(
+				index,
+				fg,
+				bg
+			)
+			self.pairs[name] = (
+				curses.color_pair(index)
+			)
+			index += 1
+
+	def setTheme(self, name):
+		self.load(name)
+		self.initialize()
+	
+	def get(self, name):
+		return self.pairs.get(
+			name,
+			curses.A_NORMAL
+		)

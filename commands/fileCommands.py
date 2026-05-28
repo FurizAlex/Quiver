@@ -4,20 +4,27 @@ from util.fileio import openFile
 from core.buffer import Buffer
 
 def save(editor):
-	buffer = editor.buffer
-
-	if buffer.filename:
-		editor.status = saveFile(buffer.filename, buffer.lines)
-		buffer.modified = False
+	if editor.filename:
+		result = saveFile(editor.filename, editor.buffers.lines)
+		editor.buffer.modified = False
+		editor.status = result
+		editor.statusTimer = 120
 	else:
-		editor.status = "NO FILENAME"
+		editor.saving = True
+		editor.saveInput = ""
+		editor.status = "Save as: "
 	
 def openFileBuffer(editor, filename):
-	newBuffer = Buffer(filename)
+	for i, buffer in enumerate(editor.buffers):
+		if buffer.filename == filename:
+			editor.currentBuffer = i
+			editor.status = (f"Switched to {filename}")
+			return
+	newBuffer = Buffer()
 	newBuffer.lines = openFile(filename)
-	editor.buffers.append(newBuffer)
+	newBuffer.filename = filename
 	
-	newIndex = len(editor.buffers)
+	newIndex = (len(editor.buffers) - 1)
 	editor.buffers.append(newBuffer)
 	editor.currentBuffer = newIndex
 	editor.pane.bufferIndex = newIndex
