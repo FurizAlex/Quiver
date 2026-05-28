@@ -1,3 +1,4 @@
+import os
 import curses
 
 from syntax.lexer import Lexer
@@ -11,7 +12,7 @@ class Renderer:
 		self.statusbar = StatusBar()
 
 	def draw(self, editor):
-		self.stdscr.clear()
+		self.stdscr.erase()
 		self.stdscr.border()
 
 		h, w = self.stdscr.getmaxyx()
@@ -76,33 +77,39 @@ class Renderer:
 					if bufferY == pane.cursorY:
 						lineAttr |= editor.theme.get("cursorline")
 				for token, tokenType in tokens:
-					if x >= w - 1:
+					if x >= startX + paneWidth - 1:
 						break
 					try:
 						attr = editor.theme.get(tokenType)
-
+						
+						if attr is None:
+							attr = editor.theme.get("text")
 						if editor.selection.active:
-							sx, sy, ex, ey = (editor.selection.normalized())
+							sx, sy, ex, ey = editor.selection.normalized()
 
-							tokenStart = x
-							tokenEnd = x + len(token)
+							tokenStart = x - startX - lineNumberWidth
+							tokenEnd = tokenStart + len(token)
 
 							inSelection = False
 							
 							if sy <= bufferY <= ey:
-								inSelection = (tokenEnd > sx + lineNumberWidth
-								and tokenStart < ex + lineNumberWidth
+								inSelection = (
+									tokenEnd > sx and tokenStart < ex
 								)
 								if sy == ey:
-									inSelection = (tokenEnd > sx + lineNumberWidth and tokenStart < ex + lineNumberWidth)
+									inSelection = (
+										tokenEnd > sx and
+										tokenStart < ex
+									)
 								elif bufferY == sy:
-									inSelection = (tokenEnd < sx + lineNumberWidth)
+									inSelection = tokenEnd > sx
 								elif bufferY == ey:
-									inSelection = (tokenStart < ex + lineNumberWidth)
+									inSelection = tokenStart < ex
 								else:
 									inSelection = True
 							if inSelection:
 								attr = editor.theme.get("selection")
+						if x + len(token) < startX + paneWidth - 1:
 							self.stdscr.addstr(
 								screenY + 1,
 								x,
@@ -131,7 +138,7 @@ class Renderer:
 		try:
 			self.stdscr.move(
 				activePane.cursorY - activePane.scrollY + 1,
-				activePane.cursorX + lineNumberWidth + cursorStartX
+				cursorStartX + lineNumberWidth + activePane.cursorX
 			)
 		except curses.error:
 			pass
@@ -174,7 +181,15 @@ class Renderer:
 			if i == editor.selectedFileIndex:
 				attr |= curses.A_REVERSE
 
-			display = file[:width - 3]
+			fullPath = os.path.join(
+				editor.explorerPath,
+				file
+			)
+			if os.path.isdir(fullPath):
+				display = "[+] " + file
+			else:
+				display = "    " + file
+			display = display[:width - 3]
 			try:
 				self.stdscr.addstr(
 					i + 3,
@@ -232,6 +247,13 @@ class Renderer:
 
 		query = "> " + editor.paletteInput
 
+		hint = "ENTER Execute | ESC Close"
+
+		self.stdscr.addstr(
+			y + height - 2,
+			x + 2,
+			hint
+		)
 		try:
 			self.stdscr.addstr(
 				y + 2,

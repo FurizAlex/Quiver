@@ -26,10 +26,7 @@ def handle(editor):
 	cursorY = max(0, cursorY)
 
 	cursorY = min(cursorY, len(editor.buffer.lines) - 1)
-
-	lineLength = len(editor.buffer.lines[cursorY])
-
-	cursorX = min(cursorX, lineLength)
+	cursorX = min(cursorX, len(editor.buffer.lines[cursorY]))
 
 	editor.pane.cursorX = cursorX
 	editor.pane.cursorY = cursorY

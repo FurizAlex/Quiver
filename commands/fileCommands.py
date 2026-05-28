@@ -5,7 +5,7 @@ from core.buffer import Buffer
 
 def save(editor):
 	if editor.filename:
-		result = saveFile(editor.filename, editor.buffers.lines)
+		result = saveFile(editor.filename, editor.buffer.lines)
 		editor.buffer.modified = False
 		editor.status = result
 		editor.statusTimer = 120
@@ -24,8 +24,9 @@ def openFileBuffer(editor, filename):
 	newBuffer.lines = openFile(filename)
 	newBuffer.filename = filename
 	
-	newIndex = (len(editor.buffers) - 1)
 	editor.buffers.append(newBuffer)
+	
+	newIndex = len(editor.buffers) - 1
 	editor.currentBuffer = newIndex
 	editor.pane.bufferIndex = newIndex
 

@@ -19,7 +19,7 @@ THEME = {
 	),
 	"cursorline": (
 		curses.COLOR_BLACK,
-		curses.COLOR_CYAN
+		curses.COLOR_WHITE
 	),
 	"statusbar": (
 		curses.COLOR_BLACK,

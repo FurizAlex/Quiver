@@ -22,7 +22,7 @@ class Editor:
 	def __init__(self, stdscr):
 		self.stdscr = stdscr
 
-		curses.cbreak
+		curses.cbreak()
 		curses.noecho()
 		curses.curs_set(1)
 

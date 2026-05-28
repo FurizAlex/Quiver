@@ -1,3 +1,4 @@
+import curses
 from util.fileio import saveFile
 
 def handle(editor, key):
@@ -13,11 +14,12 @@ def handle(editor, key):
 			
 			editor.buffer.filename = filename
 
-			editor.status = saveFile(filename, editor.buffer.lines)
-
 			editor.buffer.modified = False
+			editor.status = saveFile(filename, editor.buffer.lines)
+			editor.statusTimer = 120
 		editor.saving = False
-	elif key in (8, 127):
+		return
+	elif key in (8, 127, curses.KEY_BACKSPACE):
 		editor.saveInput = (editor.saveInput[:-1])
 	elif 32 <= key <= 126:
 		editor.saveInput += chr(key)
