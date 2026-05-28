@@ -4,10 +4,24 @@ def openFile(filename):
 	if not os.path.exists(filename):
 		return [""]
 
-	with open(filename, 'r') as f:
-		return f.read().split_line()
+	try:
+		with open(
+			filename,
+			'r',
+			encoding='utf-8'
+		) as f:
+			return f.read().splitlines()
+	except Exception as e:
+		return [f"Error opening file: {e}"]
 
 def saveFile(filename, lines):
-	with open(filename, 'w') as f:
-		f.write('\n'.join(lines))
-	return f"Saved {filename}"
+	try:
+		with open(
+			filename,
+			'w',
+			encoding='utf-8'
+		) as f:
+			f.write('\n'.join(lines))
+		return f"Saved {filename}"
+	except Exception as e:
+		return f"Error saving file: {e}"

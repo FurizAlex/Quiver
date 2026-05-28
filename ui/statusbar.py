@@ -7,8 +7,8 @@ class StatusBar:
 		status = (
 			f" {editor.mode} | "
 			f"{filename} | "
-			f"Ln {editor.cursor.y + 1} | "
-			f"Col {editor.cursor.x + 1} | "
+			f"Ln {editor.pane.cursorY + 1} | "
+			f"Col {editor.pane.cursorX + 1} | "
 			f"{editor.status}"
 		)
 
