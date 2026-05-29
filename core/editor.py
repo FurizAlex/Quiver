@@ -13,6 +13,7 @@ from core.clipboard import Clipboard
 from config.settings import Settings
 from input.visualMode import handle as handleVisual
 
+from ui.layout import Layout
 from ui.pane import Pane
 from ui.theme import Theme
 
@@ -51,6 +52,7 @@ class Editor:
 		self.theme = Theme()
 		self.theme.load("amiga")
 		self.theme.initialize()
+		self.layout = Layout(self)
 		self.renderer = Renderer(stdscr)
 
 		self.showExplorer = True
@@ -100,39 +102,37 @@ class Editor:
 			self.handleInput(key)
 
 	def handleInput(self, key):
-		from input.insertMode import handle
-		from input.paletteMode import handle as handlePalette
+		if key == curses.KEY_MOUSE:
+			from input.mouseMode import handleMouse
 
-		if key  == curses.KEY_MOUSE:
-			from input.mouseMode import handle
-			handle(self)
+			handleMouse(self)
 			return
+		from input.registry import INPUT_HANDLERS
+
 		if self.paletteOpen:
-			try:
-				handlePalette(self, key)
-			except Exception as e:
-				self.paletteOpen = False
-				self.status = str(e)
-			return
-		if self.focus == "explorer":
-			from input.explorerMode import handle
-			handle(self, key)
-			return
-		if self.saving:
-			from input.saveMode import handle
+			self.mode = "PALETTE"
+		elif self.saving:
+			self.mode = "SAVE"
+		elif self.focus == "explorer":
+			self.mode = "EXPLORER"
+		else:
+			self.mode = "INSERT"
+		handler = INPUT_HANDLERS.get(self.mode)
 
-			handle(self, key)
-			return
-		handle(self, key)
+		if handler:
+			handler(self, key)
 
 	def updateScroll(self):
-		h, _ = self.stdscr.getmaxyx()
+		pane = self.pane
+		visibleHeight = (self.layout.paneVisibleHeight())
 
-		if self.pane.cursorY < self.pane.scrollY:
-			self.pane.scrollY = self.pane.cursorY
-
-		elif self.pane.cursorY >= self.pane.scrollY + h - 1:
-			self.pane.scrollY = self.pane.cursorY - (h - 2)
+		if pane.cursorY < pane.scrollY:
+			pane.scrollY = pane.cursorY
+		elif pane.cursorY >= pane.scrollY + visibleHeight:
+			pane.scrollY = (pane.cursorY - visibleHeight + 1)
+		
+		if pane.cursorX < pane.scrollX:
+			pane.scrollX = pane.cursorX
 
 	def refreshExplorer(self):
 		try:

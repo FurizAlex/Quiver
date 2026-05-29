@@ -72,18 +72,10 @@ def handle(editor, key):
 	elif key == CTRL_W:
 		splitPane(editor)
 		return
-	elif key == TAB:
-		nextPane(editor)
-		return
 	elif key == curses.KEY_F2:
 		nextBuffer(editor)
 	elif key == curses.KEY_F1:
 		previousBuffer(editor)
-	elif key == 9:
-		if editor.focus == "editor":
-			editor.focus = "explorer"
-		else:
-			editor.focus = "editor"
 	elif key == 1:
 		if editor.selection.active:
 			editor.selection.clear()
@@ -207,6 +199,14 @@ def handle(editor, key):
 	# TEXT INPUT
 	# ------------------------------
 
+	elif key == 9:
+		history.push(buffer.lines, pane.cursorX, pane.cursorY)
+		tab = " " * editor.settings.tabSize
+
+		buffer.insertChar(pane.cursorX, pane.cursorY, tab)
+
+		pane.cursorX += len(tab)
+		return
 	elif 32 <= key <= 126:
 		history.push(buffer.lines, pane.cursorX, pane.cursorY)
 		

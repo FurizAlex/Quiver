@@ -1,42 +1,35 @@
 import curses
+from ui.coordinates import screenToBuffer
 
-def handle(editor):
+def handleMouse(editor):
 	try:
-		_, mx, my, _, state = (curses.getmouse())
+		_, mx, my, _, state = curses.getmouse()
 	except:
 		return
-	
-	lineNumberWidth = 6
-	editorOffsetX = 1
 
 	if editor.showExplorer:
 		if mx < editor.explorerWidth:
 			editor.focus = "explorer"
-			index = my - 3
 
-			if (0 <= index < len(editor.explorerFiles)):
+			index = my - 3
+			if 0 <= index < len(editor.explorerFiles):
 				editor.selectedFileIndex = index
 			return
 	editor.focus = "editor"
 
-	cursorX = (mx - lineNumberWidth - editorOffsetX)
-	cursorY = (my - 1 + editor.pane.scrollY)
+	bufferX, bufferY = screenToBuffer(editor, editor.activePane, mx, my)
+	bufferY = max(0, bufferY)
+	bufferY = min(bufferY, len(editor.buffer.lines) - 1)
 
-	cursorX = max(0, cursorX)
-	cursorY = max(0, cursorY)
+	lineLength = len(editor.buffer.lines[bufferY])
+	bufferX = max(0, min(bufferX, lineLength))
 
-	cursorY = min(cursorY, len(editor.buffer.lines) - 1)
-	cursorX = min(cursorX, len(editor.buffer.lines[cursorY]))
-
-	editor.pane.cursorX = cursorX
-	editor.pane.cursorY = cursorY
+	editor.pane.cursorX = bufferX
+	editor.pane.cursorY = bufferY
 
 	if state & curses.BUTTON1_PRESSED:
-		editor.selection.begin(cursorX, cursorY)
+		editor.selection.begin(bufferX, bufferY)
 	elif state & curses.BUTTON1_RELEASED:
-		editor.selection.update(cursorX, cursorY)
+		editor.selection.update(bufferX, bufferY)
 	elif state & curses.BUTTON1_CLICKED:
 		editor.selection.clear()
-	elif hasattr(curses, "BUTTON1_MOVED"):
-		if state & curses.BUTTON1_MOVED:
-			editor.selection.update(cursorX, cursorY)

@@ -3,6 +3,7 @@ import curses
 
 from syntax.lexer import Lexer
 from ui.statusbar import StatusBar
+from ui.coordinates import bufferToScreen
 
 class Renderer:
 	def __init__(self, stdscr):
@@ -13,140 +14,93 @@ class Renderer:
 
 	def draw(self, editor):
 		self.stdscr.erase()
-		self.stdscr.border()
-
-		h, w = self.stdscr.getmaxyx()
+		self.drawBorder()
 
 		if editor.showExplorer:
-			self.drawExplorer(editor, h)
-
-		self.drawTabs(editor, w)
-
-		paneCount = len(editor.panes)
-		usableWidth = w - 2
-
-		if editor.showExplorer:
-			usableWidth -= editor.explorerWidth + 1
-		paneWidth = usableWidth // paneCount
+			self.drawExplorer(editor)
+		
+		self.drawTabs(editor)
 
 		for paneIndex, pane in enumerate(editor.panes):
-			buffer = editor.buffers[pane.bufferIndex]
-			startX = 1
+			self.drawPane(editor, paneIndex, pane)
+		
+		self.drawStatusbar(editor)
+		if editor.paletteOpen:
+			self.drawPalette(editor)
+		self.placeCursor(editor)
+		self.stdscr.refresh()
+	
+	def drawBorder(self):
+		self.stdscr.border()
 
-			if editor.showExplorer:
-				startX += editor.explorerWidth + 1
-			startX += paneIndex * paneWidth
+	def drawPane(self, editor, paneIndex, pane):
+		buffer = editor.buffers[pane.bufferIndex]
+		layout = editor.layout
+		startX = layout.paneStartX(paneIndex)
+		paneWidth = layout.paneWidth()
 
-			if paneIndex > 0:
-				for y in range(1, h - 1):
-					try:
-						self.stdscr.addstr(
-							y,
-							startX - 1,
-							"|"
-						)
-					except curses.error:
-						pass
-
-			visibleLines = buffer.lines[
-				pane.scrollY:
-				pane.scrollY + h - 2
-			]
-			lineNumberWidth = 6
-
-			for screenY, line in enumerate(visibleLines):
-				bufferY = screenY + pane.scrollY
-
-				lineNumber = str(bufferY + 1).rjust(4) + " "
-
+		visibleLines = buffer.lines[
+			pane.scrollY:
+			pane.scrollY + layout.paneVisibleHeight()
+		]
+		if paneIndex > 0:
+			for y in range(1, layout.paneVisibleHeight()):
 				try:
-					self.stdscr.addstr(
-						screenY + 1,
-						startX,
-						lineNumber,
-						curses.A_DIM
-					)
+					self.stdscr.addstr(y, startX - 1, "|")
 				except curses.error:
 					pass
 
-				x = startX + lineNumberWidth
-				tokens = self.lexer.tokenize(line, "python")
-				lineAttr = 0
+		for screenY, line in enumerate(visibleLines):
+			bufferY = pane.scrollY + screenY
 
-				if paneIndex == editor.activePane:
-					if bufferY == pane.cursorY:
-						lineAttr |= editor.theme.get("cursorline")
-				for token, tokenType in tokens:
-					if x >= startX + paneWidth - 1:
-						break
-					try:
-						attr = editor.theme.get(tokenType)
-						
-						if attr is None:
-							attr = editor.theme.get("text")
-						if editor.selection.active:
-							sx, sy, ex, ey = editor.selection.normalized()
+			self.drawLineNumber(editor, startX, screenY, bufferY)
+			self.drawTextLine(editor, paneIndex, pane, line, screenY, bufferY, paneWidth)
 
-							tokenStart = x - startX - lineNumberWidth
-							tokenEnd = tokenStart + len(token)
+	def drawLineNumber(self, editor, startX, screenY, bufferY):
+		lineNumber = (str(bufferY + 1).rjust(4) + " ")
 
-							inSelection = False
-							
-							if sy <= bufferY <= ey:
-								inSelection = (
-									tokenEnd > sx and tokenStart < ex
-								)
-								if sy == ey:
-									inSelection = (
-										tokenEnd > sx and
-										tokenStart < ex
-									)
-								elif bufferY == sy:
-									inSelection = tokenEnd > sx
-								elif bufferY == ey:
-									inSelection = tokenStart < ex
-								else:
-									inSelection = True
-							if inSelection:
-								attr = editor.theme.get("selection")
-						if x + len(token) < startX + paneWidth - 1:
-							self.stdscr.addstr(
-								screenY + 1,
-								x,
-								token,
-								attr | lineAttr,
-							)
-					except curses.error:
-						pass
-					x += len(token)
-		
-		self.statusbar.draw(
-			self.stdscr,
-			editor,
-			h,
-			w
-		)
-
-		activePane = editor.pane
-		cursorStartX = 1
-
-		if editor.showExplorer:
-			cursorStartX += editor.explorerWidth + 1
-		cursorStartX += (
-			editor.activePane * paneWidth
-		)
 		try:
-			self.stdscr.move(
-				activePane.cursorY - activePane.scrollY + 1,
-				cursorStartX + lineNumberWidth + activePane.cursorX
-			)
+			self.stdscr.addstr(screenY + 1, startX, lineNumber, curses.A_DIM)
 		except curses.error:
 			pass
-		if editor.paletteOpen:
-			self.drawPalette(editor, h, w)
-		self.stdscr.refresh()
 
-	def drawExplorer(self, editor, h):
+	def drawTextLine(self, editor, paneIndex, pane, line, screenY, bufferY, paneWidth):
+		layout = editor.layout
+		x = layout.textStartX(paneIndex)
+
+		tokens = self.lexer.tokenize(line, "python")
+		expandedTokens = []
+
+		for token, tokenType in tokens:
+			token = token.replace("\t", " " * editor.settings.tabSize)
+			expandedTokens.append((token, tokenType))
+		tokens = expandedTokens
+
+		lineAttr = 0
+
+		if paneIndex == editor.activePane:
+			if bufferY == pane.cursorY:
+				lineAttr = editor.theme.get("cursorline")
+		for token, tokenType in tokens:
+			if x >= (layout.paneStartX(paneIndex) + paneWidth - 1):
+				break
+			attr = editor.theme.get(tokenType)
+			if attr is None:
+				attr = editor.theme.get("text")
+			try:
+				self.stdscr.addstr(
+					screenY + 1,
+					x,
+					token,
+					attr | lineAttr
+				)
+			except curses.error:
+				pass
+			x += len(token)
+
+	def drawExplorer(self, editor):
+		h, _ = self.stdscr.getmaxyx()
+
 		width = editor.explorerWidth
 
 		for y in range(1, h - 1):
@@ -158,13 +112,11 @@ class Renderer:
 				)
 			except curses.error:
 				pass
-		title = " FILES "
-
 		try:
 			self.stdscr.addstr(
 				1,
 				2,
-				title,
+				" FILES ",
 				curses.A_BOLD
 			)
 		except curses.error:
@@ -176,8 +128,6 @@ class Renderer:
 
 			attr = curses.A_NORMAL
 			
-			if editor.focus == "explorer":
-				attr |= curses.A_BOLD
 			if i == editor.selectedFileIndex:
 				attr |= curses.A_REVERSE
 
@@ -285,7 +235,7 @@ class Renderer:
 			except curses.error:
 				pass
 
-	def drawTabs(self, editor, w):
+	def drawTabs(self, editor):
 		x = 2
 
 		for i, buffer in enumerate(editor.buffers):
@@ -309,3 +259,27 @@ class Renderer:
 			except curses.error:
 				pass
 			x += len(title) + 1
+
+	def drawStatusbar(self, editor):
+		h, w = self.stdscr.getmaxyx()
+
+		self.statusbar.draw(
+			self.stdscr,
+			editor,
+			h,
+			w
+		)
+
+	def placeCursor(self, editor):
+		pane = editor.pane
+
+		screenX, screenY = bufferToScreen(
+			editor,
+			editor.activePane,
+			pane.cursorX,
+			pane.cursorY
+		)
+		try:
+			self.stdscr.move(screenY, screenX)
+		except curses.error:
+			pass

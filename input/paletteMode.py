@@ -1,5 +1,5 @@
 import curses
-from commands.fileCommands import openFileBuffer
+from ui.coordinates import screenToBuffer
 
 def handle(editor, key):
 	if key == 27:
