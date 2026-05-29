@@ -25,12 +25,24 @@ def handle(editor, key):
 	elif 32 <= key <= 126:
 		editor.paletteInput += chr(key)
 
+def fuzzyMatch(query, text):
+	query = query.lower()
+	text = text.lower()
+	i = 0
+
+	for ch in text:
+		if i < len(query) and ch == query[i]:
+			i += 1
+	return i == len(query)
+
 def filtered(editor):
 	query = editor.paletteInput.lower()
 
+	if not query:
+		return editor.paletteItems
 	return [
 		item for item in editor.paletteItems
-		if query in item.lower()
+		if fuzzyMatch(query, item)
 	]
 
 def execute(editor):

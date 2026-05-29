@@ -13,7 +13,7 @@ class Theme:
 				"string": curses.color_pair(3),
 				"comment": curses.color_pair(4),
 
-				"cursorline": curses.A_REVERSE,
+				"cursorline": curses.A_DIM | curses.color_pair(1),
 				"selection": curses.A_REVERSE,
 
 				"lineNumber": curses.A_DIM,

@@ -96,6 +96,16 @@ def handle(editor, key):
 		editor.paletteInput = ""
 		editor.paletteSelection = 0
 		return
+	elif key == CTRL_N:
+		from commands.bufferCommands import nextBuffer
+
+		nextBuffer(editor)
+		return
+	elif key == CTRL_B:
+		from commands.bufferCommands import previousBuffer
+
+		previousBuffer(editor)
+		return
 	if key == 3:
 		if selection.active:
 			sx, sy, ex, ey = selection.normalized()

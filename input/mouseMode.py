@@ -7,6 +7,18 @@ def handleMouse(editor):
 	except:
 		return
 
+	if my == 0:
+		x = 2
+		for i, buffer in enumerate(editor.buffers):
+			title = f" {buffer.name} "
+
+			if buffer.modified:
+				title += "* "
+			if x <= mx < x + len(title):
+				editor.currentBuffer = 1
+				editor.pane.bufferIndex = 1
+				return
+			x += len(title) + 1
 	if editor.showExplorer:
 		if mx < editor.explorerWidth:
 			editor.focus = "explorer"

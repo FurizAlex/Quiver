@@ -99,7 +99,11 @@ class Editor:
 			self.updateScroll()
 			self.renderer.draw(self)
 			key = self.stdscr.getch()
-			self.handleInput(key)
+			try:
+				self.handleInput(key)
+			except Exception as e:
+				self.status = f"ERROR: {str(e)}"
+				self.statusTimer = 300
 
 	def handleInput(self, key):
 		if key == curses.KEY_MOUSE:

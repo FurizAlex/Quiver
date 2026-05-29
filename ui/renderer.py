@@ -46,7 +46,16 @@ class Renderer:
 		if paneIndex > 0:
 			for y in range(1, layout.paneVisibleHeight()):
 				try:
-					self.stdscr.addstr(y, startX - 1, "|")
+					attr = curses.A_DIM
+
+					if paneIndex == editor.activePane:
+						attr = curses.A_BOLD
+					self.safeAddstr(
+						y,
+						startX - 1,
+						"|",
+						attr
+					)
 				except curses.error:
 					pass
 
@@ -60,7 +69,7 @@ class Renderer:
 		lineNumber = (str(bufferY + 1).rjust(4) + " ")
 
 		try:
-			self.stdscr.addstr(screenY + 1, startX, lineNumber, curses.A_DIM)
+			self.safeAddstr(screenY + 1, startX, lineNumber, curses.A_DIM)
 		except curses.error:
 			pass
 
@@ -120,7 +129,7 @@ class Renderer:
 				if editor.selection.contains(bufferX, bufferY):
 					finalAttr = (editor.theme.get("selection") | lineAttr)
 				try:
-					self.stdscr.addstr(
+					self.safeAddstr(
 						screenY + 1,
 						x,
 						char,
@@ -137,7 +146,7 @@ class Renderer:
 
 		for y in range(1, h - 1):
 			try:
-				self.stdscr.addstr(
+				self.safeAddstr(
 					y,
 					width,
 					"|"
@@ -145,7 +154,7 @@ class Renderer:
 			except curses.error:
 				pass
 		try:
-			self.stdscr.addstr(
+			self.safeAddstr(
 				1,
 				2,
 				" FILES ",
@@ -173,7 +182,7 @@ class Renderer:
 				display = "    " + file
 			display = display[:width - 3]
 			try:
-				self.stdscr.addstr(
+				self.safeAddstr(
 					i + 3,
 					2,
 					display.ljust(width - 3),
@@ -208,7 +217,7 @@ class Renderer:
 					char = "┘"
 
 				try:
-					self.stdscr.addstr(
+					self.safeAddstr(
 						y + py,
 						x + px,
 						char
@@ -219,7 +228,7 @@ class Renderer:
 		title = " COMMAND PALETTE "
 
 		try:
-			self.stdscr.addstr(
+			self.safeAddstr(
 				y,
 				x + 2,
 				title,
@@ -232,13 +241,13 @@ class Renderer:
 
 		hint = "ENTER Execute | ESC Close"
 
-		self.stdscr.addstr(
+		self.safeAddstr(
 			y + height - 2,
 			x + 2,
 			hint
 		)
 		try:
-			self.stdscr.addstr(
+			self.safeAddstr(
 				y + 2,
 				x + 2,
 				query
@@ -259,7 +268,7 @@ class Renderer:
 				attr = curses.A_REVERSE
 
 			try:
-				self.stdscr.addstr(
+				self.safeAddstr(
 					y + 4 + i,
 					x + 2,
 					item,
@@ -283,7 +292,7 @@ class Renderer:
 				attr = curses.A_REVERSE
 			
 			try:
-				self.stdscr.addstr(
+				self.safeAddstr(
 					0,
 					x,
 					title,
@@ -318,3 +327,25 @@ class Renderer:
 				self.stdscr.move(screenY, screenX)
 			except curses.error:
 				pass
+
+	def safeAddstr(self, y, x, text, attr=0):
+		h, w = self.stdscr.getmaxyx()
+
+		if y < 0 or y >= h:
+			return
+		if x < 0 or x >= w:
+			return
+		if x + len(text) >= w:
+			text = text[:w - x - 1]
+		
+		if not text:
+			return
+		try:
+			self.stdscr.addstr(
+				y,
+				x,
+				text,
+				attr
+			)
+		except curses.error:
+			pass
