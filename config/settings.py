@@ -2,6 +2,7 @@ from config.default import DEFAULT_SETTINGS
 
 class Settings:
 	def __init__(self):
+		self.values = DEFAULT_SETTINGS.copy()
 		self.tabSize = 4
 		self.useTabs = True
 		

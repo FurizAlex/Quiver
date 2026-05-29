@@ -27,7 +27,12 @@ class Lexer:
 
 				if match:
 					word = match.group(0)
-					tokens.append((word, "keyword"))
+					
+					if word in keywords:
+						tokenType = "keyword"
+					else:
+						tokenType = "text"
+					tokens.append((word, tokenType))
 					i += len(word)
 				else:
 					tokens.append((line[i], "text"))

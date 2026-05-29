@@ -123,16 +123,22 @@ class Editor:
 			handler(self, key)
 
 	def updateScroll(self):
+		h, w = self.stdscr.getmaxyx()
+
 		pane = self.pane
 		visibleHeight = (self.layout.paneVisibleHeight())
 
 		if pane.cursorY < pane.scrollY:
 			pane.scrollY = pane.cursorY
-		elif pane.cursorY >= pane.scrollY + visibleHeight:
-			pane.scrollY = (pane.cursorY - visibleHeight + 1)
+		elif pane.cursorY >= (pane.scrollY + self.layout.paneVisibleHeight()):
+			pane.scrollY = (pane.cursorY - self.layout.paneVisibleHeight() + 1)
+		
+		visibleWidth = (self.layout.paneWidth() - self.layout.lineNumberWidth - 2)
 		
 		if pane.cursorX < pane.scrollX:
 			pane.scrollX = pane.cursorX
+		elif pane.cursorX >= (pane.scrollX + visibleWidth):
+			pane.scrollX = (pane.cursorX - visibleWidth + 1)
 
 	def refreshExplorer(self):
 		try:

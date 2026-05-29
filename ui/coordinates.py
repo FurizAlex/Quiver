@@ -26,7 +26,16 @@ def bufferToScreen(editor, paneIndex, bufferX, bufferY):
 	layout = editor.layout
 	pane = editor.panes[paneIndex]
 
-	screenX = (layout.textStartX(paneIndex) + bufferX)
+	line = editor.buffer.lines[bufferY]
+	visualX = 0
+
+	for i, ch in enumerate(line[:bufferX]):
+		if ch == "\t":
+			tabSize = editor.settings.tabSize
+			visualX += (tabSize - (visualX % tabSize))
+		else:
+			visualX += 1
+	screenX = (layout.textStartX(paneIndex) + visualX - pane.scrollX)
 	screenY = (bufferY - pane.scrollY + 1)
 
 	return screenX, screenY

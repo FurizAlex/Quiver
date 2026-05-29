@@ -21,7 +21,7 @@ def handle(editor, key):
 		if os.path.isdir(path):
 			editor.explorerPath = path
 			editor.refreshExplorer()
-			editor.selectedFileIndex = 0
+			editor.selectedFileIndex = min(editor.selectedFileIndex, max(0, len(editor.explorerFiles) - 1))
 		else:
 			openFileBuffer(editor, path)
 			editor.focus = "editor"

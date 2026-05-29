@@ -1,7 +1,9 @@
 import curses
-from ui.coordinates import screenToBuffer
+from commands.fileCommands import openFileBuffer
 
 def handle(editor, key):
+	items = filtered(editor)
+
 	if key == 27:
 		editor.paletteOpen = False
 		return
@@ -15,10 +17,11 @@ def handle(editor, key):
 			editor.paletteSelection - 1
 		)
 	elif key == curses.KEY_DOWN:
-		editor.paletteSelection = min(
-			len(filtered(editor)) - 1,
-			editor.paletteSelection + 1
-		)
+		if items:
+			editor.paletteSelection = min(
+				len(items) - 1,
+				editor.paletteSelection + 1
+			)
 	elif 32 <= key <= 126:
 		editor.paletteInput += chr(key)
 
@@ -39,7 +42,11 @@ def execute(editor):
 	choice = items[editor.paletteSelection]
 
 	if editor.paletteMode == "files":
-		openFileBuffer(editor, choice)
+		import os
+
+		path = os.path.abspath(choice)
+		if os.path.isfile(path):
+			openFileBuffer(editor, path)
 	elif editor.paletteMode == "commands":
 		if choice == "quit":
 			editor.running = False

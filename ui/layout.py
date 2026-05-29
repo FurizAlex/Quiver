@@ -29,9 +29,3 @@ class Layout:
 		h, _ = self.editor.stdscr.getmaxyx()
 
 		return h - 2
-
-	def addPanel(self, panel):
-		self.panels.append(panel)
-
-	def visiblePanels(self):
-		return [p for p in self.panels if p.visible]

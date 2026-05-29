@@ -66,37 +66,69 @@ class Renderer:
 
 	def drawTextLine(self, editor, paneIndex, pane, line, screenY, bufferY, paneWidth):
 		layout = editor.layout
-		x = layout.textStartX(paneIndex)
-
+		startX = layout.textStartX(paneIndex)
 		tokens = self.lexer.tokenize(line, "python")
 		expandedTokens = []
+		x = startX
 
 		for token, tokenType in tokens:
-			token = token.replace("\t", " " * editor.settings.tabSize)
+			expanded = ""
+			for ch in token:
+				if ch == "\t":
+					tabSize = editor.settings.tabSize
+					spaces = (tabSize - ((x - startX) % tabSize))
+					expanded += (" " * spaces)
+				else:
+					expanded += ch
+			token = expanded
 			expandedTokens.append((token, tokenType))
-		tokens = expandedTokens
 
+		fullLine = "".join(token for token, _ in expandedTokens)
+
+		if pane.scrollX > 0:
+			fullLine = fullLine[pane.scrollX:]
+		tokens = self.lexer.tokenize(fullLine, "python")
+		expandedTokens = []
+		for token, tokenType in tokens:
+			expanded = ""
+			for ch in token:
+				if ch == "\t":
+					tabSize = editor.settings.tabSize
+					spaces = (tabSize - ((x - startX) % tabSize))
+					expanded += (" " * spaces)
+				else:
+					expanded += ch
+			token = expanded
+			expandedTokens.append((token, tokenType))
 		lineAttr = 0
 
 		if paneIndex == editor.activePane:
 			if bufferY == pane.cursorY:
 				lineAttr = editor.theme.get("cursorline")
-		for token, tokenType in tokens:
-			if x >= (layout.paneStartX(paneIndex) + paneWidth - 1):
-				break
+		for token, tokenType in expandedTokens:
 			attr = editor.theme.get(tokenType)
+
 			if attr is None:
 				attr = editor.theme.get("text")
-			try:
-				self.stdscr.addstr(
-					screenY + 1,
-					x,
-					token,
-					attr | lineAttr
-				)
-			except curses.error:
-				pass
-			x += len(token)
+			for charIndex, char in enumerate(token):
+				if x >= (layout.paneStartX(paneIndex) + paneWidth - 1):
+					return
+				finalAttr = attr | lineAttr
+
+				bufferX = ((x - startX) + pane.scrollX)
+
+				if editor.selection.contains(bufferX, bufferY):
+					finalAttr = (editor.theme.get("selection") | lineAttr)
+				try:
+					self.stdscr.addstr(
+						screenY + 1,
+						x,
+						char,
+						finalAttr
+					)
+				except curses.error:
+					pass
+				x += 1
 
 	def drawExplorer(self, editor):
 		h, _ = self.stdscr.getmaxyx()
@@ -150,9 +182,10 @@ class Renderer:
 			except curses.error:
 				pass
 	
-	def drawPalette(self, editor, h, w):
+	def drawPalette(self, editor):
 		width = 40
 		height = 10
+		h, w = self.stdscr.getmaxyx()
 
 		x = (w - width) // 2
 		y = (h - height) // 2
@@ -272,6 +305,7 @@ class Renderer:
 
 	def placeCursor(self, editor):
 		pane = editor.pane
+		h, w = self.stdscr.getmaxyx()
 
 		screenX, screenY = bufferToScreen(
 			editor,
@@ -279,7 +313,8 @@ class Renderer:
 			pane.cursorX,
 			pane.cursorY
 		)
-		try:
-			self.stdscr.move(screenY, screenX)
-		except curses.error:
-			pass
+		if (0 <= screenY < h and 0 <= screenX < w):
+			try:
+				self.stdscr.move(screenY, screenX)
+			except curses.error:
+				pass

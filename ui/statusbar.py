@@ -17,7 +17,7 @@ class StatusBar:
 				h - 2,
 				0,
 				status[:w - 1],
-				curses.color_pair(5)
+				editor.theme.get("statusBar")
 			)
 		except curses.error:
 			pass

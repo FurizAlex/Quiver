@@ -32,3 +32,18 @@ class Selection:
 			start, end = end, start
 		
 		return (start[1], start[0], end[1], end[0])
+
+	def contains(self, x, y):
+		if not self.active:
+			return False
+		sx, sy, ex, ey = self.normalized()
+		
+		if y < sy or y > ey:
+			return False
+		if sy == ey:
+			return sx <= x < ex
+		if y == sy:
+			return x >= sx
+		if y == ey:
+			return x < ex
+		return True
