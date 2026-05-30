@@ -6,7 +6,7 @@ def handle(editor, key):
 		editor.saving = False
 		editor.status = ""
 		return
-	elif key == 10:
+	elif key in (10, 13, curses.KEY_ENTER):
 		filename = editor.saveInput.strip()
 
 		if filename:

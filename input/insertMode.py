@@ -70,31 +70,14 @@ def handle(editor, key):
 		save(editor)
 		return
 	elif key == CTRL_O:
-		editor.paletteOpen = True
-		editor.paletteMode = "files"
-		try:
-			import os
+		from input.paletteMode import openFilePalette
 
-			editor.paletteItems = sorted(os.listdir("."))
-		except:
-			editor.paletteItems = []
-		editor.paletteInput = ""
-		editor.paletteSelection = 0
+		openFilePalette(editor)
 		return
 	elif key == CTRL_P:
-		editor.paletteOpen = True
-		editor.paletteMode = "commands"
-		editor.paletteItems = [
-			"open",
-			"save",
-			"quit",
-			"theme",
-			"explorer",
-			"split pane",
-			"new buffer"
-		]
-		editor.paletteInput = ""
-		editor.paletteSelection = 0
+		from input.paletteMode import openCommandPalette
+
+		openCommandPalette(editor)
 		return
 	elif key == CTRL_N:
 		from commands.bufferCommands import nextBuffer
@@ -105,6 +88,20 @@ def handle(editor, key):
 		from commands.bufferCommands import previousBuffer
 
 		previousBuffer(editor)
+		return
+	elif key == CTRL_G:
+		editor.gotoMode = True
+		editor.gotoInput = ""
+		return
+	elif key == CTRL_F:
+		editor.searchMode = True
+		editor.searchInput = ""
+		return
+	elif key == CTRL_Z:
+		undo(editor)
+		return
+	elif key == CTRL_Y:
+		redo(editor)
 		return
 	if key == 3:
 		if selection.active:
@@ -126,16 +123,33 @@ def handle(editor, key):
 	elif key == 9:
 		insertText(editor, "\t")
 	elif key == 10:
+		print("ENTER DEBUG")
+		print("buffer.lines =", repr(buffer.lines))
+		print("len =", len(buffer.lines))
+		print("cursorY =", cursor.cursorY)
 		line = buffer.lines[cursor.cursorY]
 
 		left = line[:cursor.cursorX]
 		right = line[cursor.cursorX:]
+		indent = ""
+
+		for ch in left:
+			if ch in (" ", "\t"):
+				indent += ch
+			else:
+				break
+		
+		if left.rstrip().endswith(":"):
+			if editor.settings.useTabs:
+				indent += "\t"
+			else:
+				indent += " " * editor.settings.tabSize
 
 		buffer.lines[cursor.cursorY] = left
-		buffer.lines.insert(cursor.cursorY + 1, right)
+		buffer.lines.insert(cursor.cursorY + 1, indent + right)
 
 		cursor.cursorY += 1
-		cursor.cursorX = 0
+		cursor.cursorX = len(indent)
 	elif key in (curses.KEY_BACKSPACE, 127):
 		if selection.active:
 			deleteSelection(editor)

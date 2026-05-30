@@ -64,14 +64,7 @@ class Editor:
 		self.paletteOpen = False
 		self.paletteInput = ""
 		self.paletteMode = "commands"
-		self.paletteItems = [
-			"open",
-			"save",
-			"quit",
-			"theme",
-			"explorer",
-			"new buffer"
-		]
+		self.paletteItems = []
 		self.paletteSelection = 0
 
 		self.mode = "INSERT"
@@ -79,6 +72,12 @@ class Editor:
 		self.running = True
 		self.filename = None
 		self.status = "WELCOME TO QUIVER"
+
+		self.gotoMode = False
+		self.gotoInput = ""
+
+		self.searchMode = False
+		self.searchInput = ""
 
 		self.saving = False
 		self.saveInput = ""
@@ -102,10 +101,11 @@ class Editor:
 			try:
 				self.handleInput(key)
 			except Exception as e:
-				self.status = f"ERROR: {str(e)}"
-				self.statusTimer = 300
+				self.running = False
+				raise
 
 	def handleInput(self, key):
+		self.status = f"KEY={key}"
 		if key == curses.KEY_MOUSE:
 			from input.mouseMode import handleMouse
 
@@ -119,6 +119,8 @@ class Editor:
 			self.mode = "SAVE"
 		elif self.focus == "explorer":
 			self.mode = "EXPLORER"
+		elif self.searchMode:
+			self.mode = "SEARCH"
 		else:
 			self.mode = "INSERT"
 		handler = INPUT_HANDLERS.get(self.mode)

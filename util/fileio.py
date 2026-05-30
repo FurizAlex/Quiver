@@ -5,12 +5,12 @@ def openFile(filename):
 		return [""]
 
 	try:
-		with open(
-			filename,
-			'r',
-			encoding='utf-8'
-		) as f:
+		with open(filename, 'r', encoding='utf-8') as f:
 			return f.read().splitlines()
+
+			if len(lines) == 0:
+				return [""]
+			return lines
 	except Exception as e:
 		return [f"Error opening file: {e}"]
 

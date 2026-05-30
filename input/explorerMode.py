@@ -11,6 +11,12 @@ def handle(editor, key):
 		editor.selectedFileIndex = max(0, editor.selectedFileIndex - 1)
 	elif key == curses.KEY_DOWN:
 		editor.selectedFileIndex = min(len(editor.explorerFiles) - 1, editor.selectedFileIndex + 1)
+	elif key == curses.KEY_BACKSPACE:
+		parent = os.path.dirname(editor.explorerPath)
+
+		if parent != editor.explorerPath:
+			editor.explorerPath = parent
+			editor.refreshExplorer()
 	elif key == 10:
 		if not editor.explorerFiles:
 			return

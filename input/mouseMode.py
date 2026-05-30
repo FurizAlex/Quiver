@@ -15,9 +15,8 @@ def handleMouse(editor):
 			if buffer.modified:
 				title += "* "
 			if x <= mx < x + len(title):
-				editor.currentBuffer = 1
-				editor.pane.bufferIndex = 1
-				return
+				editor.currentBuffer = i
+				editor.pane.bufferIndex = i
 			x += len(title) + 1
 	if editor.showExplorer:
 		if mx < editor.explorerWidth:
@@ -46,3 +45,10 @@ def handleMouse(editor):
 			editor.selection.update(bufferX, bufferY)
 	elif state & curses.BUTTON1_CLICKED:
 		editor.selection.clear()
+
+	if state & curses.BUTTON4_PRESSED:
+		editor.scrollY = max(0, editor.scrollY - 3)
+		return
+	if state & curses.BUTTON5_PRESSED:
+		editor.scrollY += 3
+		return

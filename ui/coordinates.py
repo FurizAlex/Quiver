@@ -26,7 +26,12 @@ def bufferToScreen(editor, paneIndex, bufferX, bufferY):
 	layout = editor.layout
 	pane = editor.panes[paneIndex]
 
-	line = editor.buffer.lines[bufferY]
+	lines = editor.buffer.lines
+	if not lines:
+		return (0, 1)
+
+	bufferY = max(0, min(bufferY, len(lines) - 1))
+	line = lines[bufferY]
 	visualX = 0
 
 	for i, ch in enumerate(line[:bufferX]):

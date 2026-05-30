@@ -14,5 +14,11 @@ def splitPane(editor):
 
 	editor.activePane = (len(editor.panes) - 1)
 
+def closePane(editor):
+	if len(editor.panes) <= 1:
+		return
+	editor.panes.pop(editor.activePane)
+	editor.activePane = min(editor.activePane, len(editor.panes) - 1)
+
 def nextPane(editor):
 	editor.activePane = ((editor.activePane + 1) % len(editor.panes))

@@ -27,6 +27,8 @@ class Renderer:
 		self.drawStatusbar(editor)
 		if editor.paletteOpen:
 			self.drawPalette(editor)
+		if editor.searchMode:
+			self.drawSearch(editor)
 		self.placeCursor(editor)
 		self.stdscr.refresh()
 	
@@ -76,6 +78,13 @@ class Renderer:
 	def drawTextLine(self, editor, paneIndex, pane, line, screenY, bufferY, paneWidth):
 		layout = editor.layout
 		startX = layout.textStartX(paneIndex)
+
+		if (paneIndex == editor.activePane and bufferY == pane.cursorY):
+			try:
+				self.safeAddstr(screenY + 1, layout.paneStartX(paneIndex), " " * (paneWidth - 1), editor.theme.get("cursorline"))
+			except curses.error:
+				pass
+
 		tokens = self.lexer.tokenize(line, "python")
 		expandedTokens = []
 		x = startX
@@ -109,11 +118,9 @@ class Renderer:
 					expanded += ch
 			token = expanded
 			expandedTokens.append((token, tokenType))
+		
 		lineAttr = 0
 
-		if paneIndex == editor.activePane:
-			if bufferY == pane.cursorY:
-				lineAttr = editor.theme.get("cursorline")
 		for token, tokenType in expandedTokens:
 			attr = editor.theme.get(tokenType)
 
@@ -177,9 +184,9 @@ class Renderer:
 				file
 			)
 			if os.path.isdir(fullPath):
-				display = "[+] " + file
+				display = "> " + file
 			else:
-				display = "    " + file
+				display = "- " + file
 			display = display[:width - 3]
 			try:
 				self.safeAddstr(
@@ -192,9 +199,9 @@ class Renderer:
 				pass
 	
 	def drawPalette(self, editor):
-		width = 40
-		height = 10
 		h, w = self.stdscr.getmaxyx()
+		width = 40
+		height = min(12, h - 4)
 
 		x = (w - width) // 2
 		y = (h - height) // 2
@@ -254,12 +261,9 @@ class Renderer:
 			)
 		except curses.error:
 			pass
-
-		items = [
-			item for item in editor.paletteItems
-			if editor.paletteInput.lower()
-			in item.lower()
-		]
+		from input.paletteMode import filtered
+		items = filtered(editor)
+		items = items[:5]
 
 		for i, item in enumerate(items[:5]):
 			attr = curses.A_NORMAL
@@ -271,7 +275,7 @@ class Renderer:
 				self.safeAddstr(
 					y + 4 + i,
 					x + 2,
-					item,
+					item["name"],
 					attr
 				)
 			except curses.error:
@@ -349,3 +353,14 @@ class Renderer:
 			)
 		except curses.error:
 			pass
+
+	def drawSearch(self, editor):
+		h, w = self.stdscr.getmaxyx()
+		text = f"Search: {editor.searchInput}"
+
+		self.safeAddstr(
+			h - 3,
+			2,
+			text,
+			curses.A_REVERSE
+		)

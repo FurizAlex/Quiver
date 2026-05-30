@@ -17,6 +17,8 @@ class Buffer:
 		return self.lines[y]
 
 	def insertChar(self, x, y, char):
+		if not self.lines:
+			self.lines = [""]
 		line = self.lines[y]
 
 		self.lines[y] = (
@@ -61,3 +63,7 @@ class Buffer:
 			else:
 				lines.append(line)
 		return "\n".join(lines)
+
+	def ensureValid(self):
+		if not self.lines:
+			self.lines = [""]
