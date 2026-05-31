@@ -41,9 +41,9 @@ class Selection:
 		if y < sy or y > ey:
 			return False
 		if sy == ey:
-			return sx <= x < ex
+			return sx <= x <= ex
 		if y == sy:
 			return x >= sx
 		if y == ey:
-			return x < ex
+			return x <= ex
 		return True

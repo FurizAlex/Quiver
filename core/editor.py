@@ -28,7 +28,7 @@ class Editor:
 		curses.curs_set(1)
 
 		stdscr.keypad(True)
-		curses.mousemask(curses.ALL_MOUSE_EVENTS)
+		curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
 		stdscr.timeout(16)
 
 		curses.start_color()
@@ -50,6 +50,7 @@ class Editor:
 
 		self.settings = Settings()
 		self.theme = Theme()
+		self.currentTheme = "amiga"
 		self.theme.load("amiga")
 		self.theme.initialize()
 		self.layout = Layout(self)
@@ -97,16 +98,22 @@ class Editor:
 					self.status = ""
 			self.updateScroll()
 			self.renderer.draw(self)
-			key = self.stdscr.getch()
+			from input.translator import translate
+
+			raw = self.stdscr.getch()
+			event = translate(raw)
 			try:
-				self.handleInput(key)
+				self.handleInput(event)
 			except Exception as e:
 				self.running = False
 				raise
 
-	def handleInput(self, key):
-		self.status = f"KEY={key}"
-		if key == curses.KEY_MOUSE:
+	def handleInput(self, event):
+		self.status = (
+			f"KEY={event.key} "
+			f"CTRL={event.ctrl}"
+		)
+		if event.key == curses.KEY_MOUSE:
 			from input.mouseMode import handleMouse
 
 			handleMouse(self)
@@ -126,7 +133,7 @@ class Editor:
 		handler = INPUT_HANDLERS.get(self.mode)
 
 		if handler:
-			handler(self, key)
+			handler(self, event)
 
 	def updateScroll(self):
 		h, w = self.stdscr.getmaxyx()
@@ -154,7 +161,12 @@ class Editor:
 
 	@property
 	def buffer(self):
-		return self.buffers[self.currentBuffer]
+		index = self.pane.bufferIndex
+		
+		#if index >= len(self.buffers):
+		#	print("BUFFER DESYNC:", "pane.bufferIndex =", index, "Buffers =", len(self.buffers))
+		self.pane.bufferIndex = max(0, len(self.buffers) - 1)
+		return self.buffers[self.pane.bufferIndex]
 
 	@property
 	def pane(self):

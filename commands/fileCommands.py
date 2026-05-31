@@ -17,21 +17,23 @@ def save(editor):
 def openFileBuffer(editor, filename):
 	for i, buffer in enumerate(editor.buffers):
 		if buffer.filename == filename:
-			editor.currentBuffer = newIndex
-			editor.pane.bufferIndex = newIndex
-			
-			from commands.bufferCommands import clampCursors
-			clampCursors(editor)
+			editor.currentBuffer = i
+			editor.pane.bufferIndex = i
 			editor.status = (f"Switched to {filename}")
 			return
 	newBuffer = Buffer()
 	newBuffer.lines = openFile(filename)
 	newBuffer.filename = filename
 	
+	if not newBuffer.lines:
+		newBuffer.lines = [""]
 	editor.buffers.append(newBuffer)
 	
 	newIndex = len(editor.buffers) - 1
 	editor.currentBuffer = newIndex
 	editor.pane.bufferIndex = newIndex
+
+	editor.pane.cursorX = 0
+	editor.pane.cursorY = 0
 
 	editor.status = f"Opened {filename}"

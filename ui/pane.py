@@ -1,3 +1,5 @@
+from core.viewport import Viewport
+
 class Pane:
 	def __init__(self, bufferIndex=0):
 		self.bufferIndex = bufferIndex
@@ -5,8 +7,7 @@ class Pane:
 		self.cursorX = 0
 		self.cursorY = 0
 
-		self.scrollX = 0
-		self.scrollY = 0
+		self.viewport = Viewport()
 
 	def moveLeft(self):
 		self.cursorX = max(0, self.cursorX - 1)
@@ -41,3 +42,19 @@ class Pane:
 	@y.setter
 	def y(self, value):
 		self.cursorY = value
+
+	@property
+	def scrollX(self):
+		return self.viewport.scrollX
+
+	@scrollX.setter
+	def scrollX(self, value):
+		self.viewport.scrollX = value
+
+	@property
+	def scrollY(self):
+		return self.viewport.scrollY
+	
+	@scrollY.setter
+	def scrollY(self, value):
+		self.viewport.scrollY = value

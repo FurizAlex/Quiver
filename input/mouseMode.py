@@ -40,9 +40,12 @@ def handleMouse(editor):
 
 	if state & curses.BUTTON1_PRESSED:
 		editor.selection.begin(bufferX, bufferY)
-	elif state & curses.BUTTON1_RELEASED or state & curses.BUTTON1_PRESSED or state & curses.BUTTON1_CLICKED:
+	elif state & curses.BUTTON1_RELEASED:
 		if editor.selection.active:
 			editor.selection.update(bufferX, bufferY)
+	#elif state & curses.BUTTON1_MOVED:
+	#	if editor.selection.active:
+	#		editor.selection.update(bufferX, bufferY)
 	elif state & curses.BUTTON1_CLICKED:
 		editor.selection.clear()
 

@@ -67,6 +67,23 @@ def execute(editor):
 				items.append({"name": file, "action": "open_file_path", "path": os.path.abspath(file)})
 		editor.paletteItems = items
 		return
+	elif action == "change_theme":
+		editor.paletteMode = "themes"
+		editor.paletteInput = ""
+		editor.paletteSelection = 0
+		editor.paletteItems = []
+
+		for theme in editor.theme.availableThemes():
+			editor.paletteItems.append({
+				"name": theme["name"],
+				"action": "load_theme",
+				"theme": theme["id"]
+			})
+		return
+	elif action == "close_file":
+		from commands.bufferCommands import closeBuffer
+		
+		closeBuffer(editor)
 	elif action == "open_file_path":
 		openFileBuffer(editor, item["path"])
 
@@ -108,8 +125,12 @@ def openCommandPalette(editor):
 			"action": "save_file"
 		},
 		{
-			"name": "Quit",
-			"action": "quit"
+			"name": "Close File",
+			"action": "close_file"
+		},
+		{
+			"name": "Change Theme",
+			"action": "change_theme"
 		},
 		{
 			"name": "Toggle Explorer",
@@ -122,6 +143,10 @@ def openCommandPalette(editor):
 		{
 			"name": "Close Pane",
 			"action": "close_pane"
+		},
+		{
+			"name": "Quit",
+			"action": "quit"
 		},
 	]
 

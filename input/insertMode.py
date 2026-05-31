@@ -15,6 +15,7 @@ from commands.bufferCommands import previousBuffer
 
 from commands.editCommands import undo
 from commands.editCommands import redo
+from commands.historyCommands import saveUndo
 
 PAIRS = {
 	'(': ')',
@@ -49,84 +50,85 @@ def deleteSelection(editor):
 	selection.clear()
 
 def insertText(editor, text):
+	saveUndo(editor)
 	buffer = editor.buffer
 	cursor = editor.cursor
 
 	buffer.insertChar(cursor.cursorX, cursor.cursorY, text)
 	cursor.cursorX += len(text)
 
+	editor.status = repr(buffer.lines[cursor.cursorY])
+
 def isBackspace(key):
 	return key in (8, 127, curses.KEY_BACKSPACE)
 
-def handle(editor, key):
+def handle(editor, event):
 	buffer = editor.buffer
 	cursor = editor.cursor
 	selection = editor.selection
 	clipboard = editor.clipboard
+	key = event.key
 
-	if key == CTRL_S:
+	if event.ctrl and key == "S":
 		from commands.fileCommands import save
 
 		save(editor)
 		return
-	elif key == CTRL_O:
+	elif event.ctrl and key == "O":
 		from input.paletteMode import openFilePalette
 
 		openFilePalette(editor)
 		return
-	elif key == CTRL_P:
+	elif event.ctrl and key == "P":
 		from input.paletteMode import openCommandPalette
 
 		openCommandPalette(editor)
 		return
-	elif key == CTRL_N:
+	elif event.ctrl and key == "N":
 		from commands.bufferCommands import nextBuffer
 
 		nextBuffer(editor)
 		return
-	elif key == CTRL_B:
+	elif event.ctrl and key == "B":
 		from commands.bufferCommands import previousBuffer
 
 		previousBuffer(editor)
 		return
-	elif key == CTRL_G:
+	elif event.ctrl and key == "G":
 		editor.gotoMode = True
 		editor.gotoInput = ""
 		return
-	elif key == CTRL_F:
+	elif event.ctrl and key == "F":
 		editor.searchMode = True
 		editor.searchInput = ""
 		return
-	elif key == CTRL_Z:
+	elif event.ctrl and key == "Z":
 		undo(editor)
 		return
-	elif key == CTRL_Y:
+	elif event.ctrl and key == "Y":
 		redo(editor)
 		return
-	if key == 3:
+	if key == "HOME":
 		if selection.active:
 			sx, sy, ex, ey = selection.normalized()
 
 			text = buffer.getSelection(sx, sy, ex, ey)
 			clipboard.copy(text)
-	elif key == 24:
+	elif key == "END":
 		if selection.active:
 			sx, sy, ex, ey = selection.normalized()
 
 			text = buffer.getSelection(sx, sy, ex, ey)
 			clipboard.copy(text)
 			deleteSelection(editor)
-	elif key == 22:
+	elif key == "":
 		text = clipboard.paste()
 		if text:
 			insertText(editor, text)
-	elif key == 9:
+	elif key == "TAB":
 		insertText(editor, "\t")
-	elif key == 10:
-		print("ENTER DEBUG")
-		print("buffer.lines =", repr(buffer.lines))
-		print("len =", len(buffer.lines))
-		print("cursorY =", cursor.cursorY)
+	elif key == "ENTER":
+		saveUndo(editor)
 		line = buffer.lines[cursor.cursorY]
 
 		left = line[:cursor.cursorX]
@@ -139,7 +141,7 @@ def handle(editor, key):
 			else:
 				break
 		
-		if left.rstrip().endswith(":"):
+		if line.rstrip().endswith(":"):
 			if editor.settings.useTabs:
 				indent += "\t"
 			else:
@@ -150,10 +152,12 @@ def handle(editor, key):
 
 		cursor.cursorY += 1
 		cursor.cursorX = len(indent)
-	elif key in (curses.KEY_BACKSPACE, 127):
+	elif key == "BACKSPACE":
+		saveUndo(editor)
 		if selection.active:
 			deleteSelection(editor)
 		elif cursor.cursorX > 0:
+			saveUndo(editor)
 			buffer.deleteChar(cursor.cursorX, cursor.cursorY)
 			cursor.cursorX -= 1
 		elif cursor.cursorY > 0:
@@ -162,26 +166,65 @@ def handle(editor, key):
 			
 			cursor.cursorY -= 1
 			cursor.cursorX = prev
-	elif key == curses.KEY_LEFT:
+	elif event.shift and key == "LEFT":
+		saveUndo(editor)
+		startOrUpdateSelection(editor)
 		moveLeft(buffer, cursor)
-	elif key == curses.KEY_RIGHT:
+		selection.update(cursor.cursorX, cursor.cursorY)
+	elif event.shift and key == "RIGHT":
+		saveUndo(editor)
+		startOrUpdateSelection(editor)
 		moveRight(buffer, cursor)
-	elif key == curses.KEY_UP:
+		selection.update(cursor.cursorX, cursor.cursorY)
+	#elif key == curses.KEY_SHIFT_UP:
+	#	startOrUpdateSelection(editor)
+	#	moveUp(buffer, cursor)
+	#	selection.update(cursor.cursorX, cursor.cursorY)
+	#elif key == curses.KEY_SHIFT_DOWN:
+	#	startOrUpdateSelection(editor)
+	#	moveDown(buffer, cursor)
+	#	selection.update(cursor.cursorX, cursor.cursorY)
+	elif key == "LEFT":
+		saveUndo(editor)
+		selection.clear()
+		moveLeft(buffer, cursor)
+	elif key == "RIGHT":
+		saveUndo(editor)
+		selection.clear()
+		moveRight(buffer, cursor)
+	elif key == "UP":
+		saveUndo(editor)
+		selection.clear()
 		moveUp(buffer, cursor)
-	elif key == curses.KEY_DOWN:
+	elif key == "DOWN":
+		saveUndo(editor)
+		selection.clear()
 		moveDown(buffer, cursor)
-	elif key == curses.KEY_HOME:
+	#elif key == KEY_CTRL_SHIFT_LEFT:
+	#	startOrUpdateSelection(editor)
+	#	cursor.cursorX = prevWordStart(buffer.lines[cursor.cursorY], cursor.cursorX)
+	#	selection.update(cursor.cursorX, cursor.cursorY)
+	#elif key == KEY_CTRL_SHIFT_RIGHT:
+	#	startOrUpdateSelection(editor)
+	#	cursor.cursorX = nextWordStart(buffer.lines[cursor.cursorY], cursor.cursorX)
+	#	selection.update(cursor.cursorX, cursor.cursorY)
+	elif key == "HOME":
 		moveHome(buffer, cursor)
-	elif key == curses.KEY_END:
+	elif key == "END":
 		moveEnd(buffer, cursor)
-	elif 32 <= key <= 126:
-		char = chr(key)
-		
-		if selection.active:
-			deleteSelection(editor)
-		if char in PAIRS:
-			insertText(editor, char + PAIRS[char])
+	elif len(key) == 1 and not event.ctrl and not event.alt:
+		saveUndo(editor)
+		if key in PAIRS:
+			insertText(editor, key + PAIRS[key])
 			cursor.cursorX -= 1
 		else:
-			insertText(editor, char)
+			insertText(editor, key)
 			
+def startOrUpdateSelection(editor):
+	cursor = editor.cursor
+	selection = editor.selection
+
+	if not selection.active:
+		selection.begin(cursor.cursorX, cursor.cursorY)
+	else:
+		selection.update(cursor.cursorX, cursor.cursorY)

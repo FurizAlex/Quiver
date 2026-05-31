@@ -4,8 +4,9 @@ import curses
 from syntax.lexer import Lexer
 from ui.statusbar import StatusBar
 from ui.coordinates import bufferToScreen
+from ui.rendererBase import RendererBase
 
-class Renderer:
+class Renderer(RendererBase):
 	def __init__(self, stdscr):
 		self.stdscr = stdscr
 
@@ -13,7 +14,7 @@ class Renderer:
 		self.statusbar = StatusBar()
 
 	def draw(self, editor):
-		self.stdscr.erase()
+		self.clear()
 		self.drawBorder()
 
 		if editor.showExplorer:
@@ -30,7 +31,29 @@ class Renderer:
 		if editor.searchMode:
 			self.drawSearch(editor)
 		self.placeCursor(editor)
+		self.present()
+
+	def clear(self):
+		self.stdscr.erase()
+
+	def present(self):
 		self.stdscr.refresh()
+
+	def drawText(self, x, y, text, style=0):
+		self.safeAddstr(y, x, text, style)
+
+	def drawLineNumber(self, x1, y1, x2, y2, style=0):
+		if x1 == x2:
+			for y in range(y1, y2 + 1):
+				self.safeAddstr(y, x1, "|", style)
+		elif y1 == y2:
+			length = (x2 - x1) + 1
+			self.safeAddstr(
+				y1,
+				x1,
+				"-" * length,
+				style
+			)
 	
 	def drawBorder(self):
 		self.stdscr.border()
@@ -48,10 +71,10 @@ class Renderer:
 		if paneIndex > 0:
 			for y in range(1, layout.paneVisibleHeight()):
 				try:
-					attr = curses.A_DIM
+					attr = editor.theme.get("splitter")
 
 					if paneIndex == editor.activePane:
-						attr = curses.A_BOLD
+						attr = editor.theme.get("activeSplitter")
 					self.safeAddstr(
 						y,
 						startX - 1,
@@ -68,83 +91,27 @@ class Renderer:
 			self.drawTextLine(editor, paneIndex, pane, line, screenY, bufferY, paneWidth)
 
 	def drawLineNumber(self, editor, startX, screenY, bufferY):
+		pane = editor.panes[editor.activePane]
 		lineNumber = (str(bufferY + 1).rjust(4) + " ")
+		attr = editor.theme.get("lineNumber")
 
+		if bufferY == pane.cursorY:
+			attr = editor.theme.get("currentLineNumber")
 		try:
-			self.safeAddstr(screenY + 1, startX, lineNumber, curses.A_DIM)
+			self.safeAddstr(screenY + 1, startX, lineNumber, attr)
 		except curses.error:
 			pass
 
 	def drawTextLine(self, editor, paneIndex, pane, line, screenY, bufferY, paneWidth):
 		layout = editor.layout
-		startX = layout.textStartX(paneIndex)
-
-		if (paneIndex == editor.activePane and bufferY == pane.cursorY):
-			try:
-				self.safeAddstr(screenY + 1, layout.paneStartX(paneIndex), " " * (paneWidth - 1), editor.theme.get("cursorline"))
-			except curses.error:
-				pass
-
-		tokens = self.lexer.tokenize(line, "python")
-		expandedTokens = []
-		x = startX
-
-		for token, tokenType in tokens:
-			expanded = ""
-			for ch in token:
-				if ch == "\t":
-					tabSize = editor.settings.tabSize
-					spaces = (tabSize - ((x - startX) % tabSize))
-					expanded += (" " * spaces)
-				else:
-					expanded += ch
-			token = expanded
-			expandedTokens.append((token, tokenType))
-
-		fullLine = "".join(token for token, _ in expandedTokens)
-
-		if pane.scrollX > 0:
-			fullLine = fullLine[pane.scrollX:]
-		tokens = self.lexer.tokenize(fullLine, "python")
-		expandedTokens = []
-		for token, tokenType in tokens:
-			expanded = ""
-			for ch in token:
-				if ch == "\t":
-					tabSize = editor.settings.tabSize
-					spaces = (tabSize - ((x - startX) % tabSize))
-					expanded += (" " * spaces)
-				else:
-					expanded += ch
-			token = expanded
-			expandedTokens.append((token, tokenType))
-		
-		lineAttr = 0
-
-		for token, tokenType in expandedTokens:
-			attr = editor.theme.get(tokenType)
-
-			if attr is None:
-				attr = editor.theme.get("text")
-			for charIndex, char in enumerate(token):
-				if x >= (layout.paneStartX(paneIndex) + paneWidth - 1):
-					return
-				finalAttr = attr | lineAttr
-
-				bufferX = ((x - startX) + pane.scrollX)
-
-				if editor.selection.contains(bufferX, bufferY):
-					finalAttr = (editor.theme.get("selection") | lineAttr)
-				try:
-					self.safeAddstr(
-						screenY + 1,
-						x,
-						char,
-						finalAttr
-					)
-				except curses.error:
-					pass
-				x += 1
+		startX = layout.textStartX(paneIndex)		
+		text = line[pane.scrollX:]		
+		self.safeAddstr(
+			screenY + 1,
+			startX,
+			text,
+			editor.theme.get("text")
+		)
 
 	def drawExplorer(self, editor):
 		h, _ = self.stdscr.getmaxyx()
@@ -165,7 +132,7 @@ class Renderer:
 				1,
 				2,
 				" FILES ",
-				curses.A_BOLD
+				editor.theme.get("explorerTitle")
 			)
 		except curses.error:
 			pass
@@ -174,10 +141,10 @@ class Renderer:
 			if i >= h - 4:
 				break
 
-			attr = curses.A_NORMAL
+			attr = editor.theme.get("explorerItem")
 			
 			if i == editor.selectedFileIndex:
-				attr |= curses.A_REVERSE
+				attr = editor.theme.get("explorerSelection")
 
 			fullPath = os.path.join(
 				editor.explorerPath,
@@ -201,7 +168,7 @@ class Renderer:
 	def drawPalette(self, editor):
 		h, w = self.stdscr.getmaxyx()
 		width = 40
-		height = min(12, h - 4)
+		height = min(len(editor.paletteItems) + 7, h - 4)
 
 		x = (w - width) // 2
 		y = (h - height) // 2
@@ -227,7 +194,8 @@ class Renderer:
 					self.safeAddstr(
 						y + py,
 						x + px,
-						char
+						char,
+						editor.theme.get("paletteBorder")
 					)
 				except curses.error:
 					pass
@@ -239,7 +207,7 @@ class Renderer:
 				y,
 				x + 2,
 				title,
-				curses.A_BOLD
+				editor.theme.get("paletteTitle")
 			)
 		except curses.error:
 			pass
@@ -262,14 +230,15 @@ class Renderer:
 		except curses.error:
 			pass
 		from input.paletteMode import filtered
+		maxItems = height - 6
 		items = filtered(editor)
-		items = items[:5]
+		items = items[:maxItems]
 
-		for i, item in enumerate(items[:5]):
-			attr = curses.A_NORMAL
+		for i, item in enumerate(items):
+			attr = editor.theme.get("paletteItem")
 
 			if i == editor.paletteSelection:
-				attr = curses.A_REVERSE
+				attr = editor.theme.get("paletteSelection")
 
 			try:
 				self.safeAddstr(
@@ -290,10 +259,10 @@ class Renderer:
 			if buffer.modified:
 				title += "* "
 
-			attr = curses.A_NORMAL
+			attr = editor.theme.get("tab")
 
 			if i == editor.currentBuffer:
-				attr = curses.A_REVERSE
+				attr = editor.theme.get("activeTab")
 			
 			try:
 				self.safeAddstr(
@@ -362,5 +331,5 @@ class Renderer:
 			h - 3,
 			2,
 			text,
-			curses.A_REVERSE
+			editor.theme.get("searchBar")
 		)
