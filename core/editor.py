@@ -7,8 +7,12 @@ from core.cursor import Cursor
 from core.history import History
 from ui.renderer import Renderer
 
+from core.commandRegistry import CommandRegistry
+from core.registerCommands import registerCommands
+
 from core.selection import Selection
 from core.clipboard import Clipboard
+from core.pluginManager import PluginManager
 
 from config.settings import Settings
 from input.visualMode import handle as handleVisual
@@ -36,9 +40,11 @@ class Editor:
 
 		signal.signal(signal.SIGTSTP, signal.SIG_IGN)
 
-		self.buffers = [Buffer()]
-		self.currentBuffer = 0
+		from core.documentManager import DocumentManager
+		self.documents = DocumentManager()
 		self.history = History()
+		self.commands = CommandRegistry()
+		registerCommands(self.commands)
 
 		self.panes = [Pane(0)]
 		self.activePane = 0
@@ -50,6 +56,7 @@ class Editor:
 
 		self.settings = Settings()
 		self.theme = Theme()
+		self.plugins = PluginManager()
 		self.currentTheme = "amiga"
 		self.theme.load("amiga")
 		self.theme.initialize()
@@ -119,6 +126,8 @@ class Editor:
 			handleMouse(self)
 			return
 		from input.registry import INPUT_HANDLERS
+
+		self.plugins.dispatchKey(self, event)
 
 		if self.paletteOpen:
 			self.mode = "PALETTE"
@@ -191,3 +200,19 @@ class Editor:
 	@scrollX.setter
 	def scrollX(self, value):
 		self.pane.scrollX = value
+
+	@property
+	def buffers(self):
+		return self.documents.buffers
+	
+	@property
+	def currentBuffer(self):
+		return self.documents.current
+
+	@currentBuffer.setter
+	def currentBuffer(self, value):
+		self.documents.current = value
+
+	@property
+	def activeBuffer(self):
+		return self.documents.active

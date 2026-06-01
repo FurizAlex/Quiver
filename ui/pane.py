@@ -1,12 +1,11 @@
+from core.cursor import Cursor
 from core.viewport import Viewport
 
 class Pane:
 	def __init__(self, bufferIndex=0):
 		self.bufferIndex = bufferIndex
 		
-		self.cursorX = 0
-		self.cursorY = 0
-
+		self.cursor = Cursor()
 		self.viewport = Viewport()
 
 	def moveLeft(self):
@@ -58,3 +57,19 @@ class Pane:
 	@scrollY.setter
 	def scrollY(self, value):
 		self.viewport.scrollY = value
+
+	@property
+	def cursorX(self):
+		return self.cursor.x
+	
+	@cursorX.setter
+	def cursorX(self, value):
+		self.cursor.x = value
+	
+	@property
+	def cursorY(self):
+		return self.cursor.y
+	
+	@cursorY.setter
+	def cursorY(self, value):
+		self.cursor.y = value

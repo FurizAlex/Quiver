@@ -3,6 +3,7 @@ import curses
 from input.keys import *
 from input.movement import *
 from input.shortcuts import handleShortcut
+from input.keymap import KEYMAP
 
 from commands.fileCommands import save
 
@@ -68,11 +69,10 @@ def handle(editor, event):
 	selection = editor.selection
 	clipboard = editor.clipboard
 	key = event.key
+	command = KEYMAP.get(key)
 
-	if event.ctrl and key == "S":
-		from commands.fileCommands import save
-
-		save(editor)
+	if command:
+		editor.commands.execute(command, editor)
 		return
 	elif event.ctrl and key == "O":
 		from input.paletteMode import openFilePalette
@@ -84,16 +84,6 @@ def handle(editor, event):
 
 		openCommandPalette(editor)
 		return
-	elif event.ctrl and key == "N":
-		from commands.bufferCommands import nextBuffer
-
-		nextBuffer(editor)
-		return
-	elif event.ctrl and key == "B":
-		from commands.bufferCommands import previousBuffer
-
-		previousBuffer(editor)
-		return
 	elif event.ctrl and key == "G":
 		editor.gotoMode = True
 		editor.gotoInput = ""
@@ -101,12 +91,6 @@ def handle(editor, event):
 	elif event.ctrl and key == "F":
 		editor.searchMode = True
 		editor.searchInput = ""
-		return
-	elif event.ctrl and key == "Z":
-		undo(editor)
-		return
-	elif event.ctrl and key == "Y":
-		redo(editor)
 		return
 	if key == "HOME":
 		if selection.active:

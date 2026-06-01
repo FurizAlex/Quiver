@@ -1,4 +1,7 @@
 class RendererBase:
+	def initialize(self):
+		pass
+
 	def draw(self, editor):
 		raise NotImplementedError
 
@@ -13,3 +16,6 @@ class RendererBase:
 
 	def present(self):
 		raise NotImplementedError
+
+	def shutdown(self):
+		pass

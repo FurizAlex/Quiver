@@ -14,6 +14,10 @@ def handle(editor, key):
 			
 			editor.buffer.filename = filename
 
+			from syntax.filetypes import detect
+
+			editor.buffer.language = detect(filename)
+
 			editor.buffer.modified = False
 			editor.status = saveFile(filename, editor.buffer.lines)
 			editor.statusTimer = 120

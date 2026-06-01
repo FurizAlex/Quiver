@@ -6,9 +6,9 @@ def openFile(filename):
 
 	try:
 		with open(filename, 'r', encoding='utf-8') as f:
-			return f.read().splitlines()
+			lines = f.read().splitlines()
 
-			if len(lines) == 0:
+			if not lines:
 				return [""]
 			return lines
 	except Exception as e:

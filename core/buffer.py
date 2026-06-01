@@ -1,6 +1,7 @@
 class Buffer:
 	def __init__(self, filename=None):
 		self.filename = filename
+		self.language = "text"
 
 		self.lines = [""]
 		self.modified = False

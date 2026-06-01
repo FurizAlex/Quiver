@@ -1,6 +1,8 @@
 from util.fileio import saveFile
 from util.fileio import openFile
 
+from syntax.filetypes import detect
+
 from core.buffer import Buffer
 
 def save(editor):
@@ -13,6 +15,7 @@ def save(editor):
 		editor.saving = True
 		editor.saveInput = ""
 		editor.status = "Save as: "
+	editor.plugins.dispatchSave(editor)
 	
 def openFileBuffer(editor, filename):
 	for i, buffer in enumerate(editor.buffers):
@@ -22,6 +25,7 @@ def openFileBuffer(editor, filename):
 			editor.status = (f"Switched to {filename}")
 			return
 	newBuffer = Buffer()
+	newBuffer.language = detect(filename)
 	newBuffer.lines = openFile(filename)
 	newBuffer.filename = filename
 	
