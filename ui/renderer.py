@@ -106,6 +106,7 @@ class Renderer(RendererBase):
 		layout = editor.layout
 		startX = layout.textStartX(paneIndex)
 		buffer = editor.buffers[pane.bufferIndex]
+		
 		tokens = self.lexer.tokenize(line, buffer.language)
 		x = startX
 		bufferX = 0
@@ -116,9 +117,9 @@ class Renderer(RendererBase):
 				if editor.selection.contains(bufferX, bufferY):
 					attr = editor.theme.get("selection")
 
-					self.safeAddstr(screenY + 1, x, ch, attr)
-					x += 1
-					bufferX += 1
+				self.safeAddstr(screenY + 1, x, ch, attr)
+				x += 1
+				bufferX += 1
 
 	def drawExplorer(self, editor):
 		h, _ = self.stdscr.getmaxyx()

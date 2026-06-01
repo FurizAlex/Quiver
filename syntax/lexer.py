@@ -1,16 +1,15 @@
 import re
 
-from syntax.languages import LANGUAGES
-
 class Lexer:
 	def tokenize(self, line, language):
-		keywords = LANGUAGES.get(language, set())
-
+		if language is None:
+			return [(line, "text")]
+		keywords = language.keywords
 		tokens = []
 		i = 0
 
 		while i < len(line):
-			if line[i] == '#':
+			if line.startswith(language.comment, i):
 				tokens.append((line[i:], "comment"))
 				break
 			elif line[i] in {'"', "'"}:

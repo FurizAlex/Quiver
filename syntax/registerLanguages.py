@@ -2,72 +2,90 @@ from syntax.language import Language
 
 def registerLanguages(registry):
 	registry.register(
-		Language(
-			"python",
-			"Python",
-			[".py"],
+		Language (
+			id="python",
+			name="Python",
+			extensions=[".py"],
+
 			comment="#",
-			indent="   "
+
+			indent="    ",
+
+			keywords={
+				"def",
+				"class",
+				"if",
+				"else",
+				"elif",
+				"return",
+				"for",
+				"while",
+				"import",
+				"from",
+				"with",
+				"as",
+				"try",
+				"except",
+				"pass",
+				"in",
+				"not",
+				"and",
+				"or"
+			}
 		)
 	)
 	registry.register(
-		Language(
-			"rust",
-			"Rust",
-			[".rs"],
+		Language (
+			id="rust",
+			name="Rust",
+			extensions=[".rs"],
+
 			comment="//",
-			indent="   "
+
+			keywords={
+				"fn",
+				"let",
+				"mut",
+				"pub",
+				"impl",
+				"struct",
+				"enum",
+				"match",
+				"if",
+				"else",
+				"for",
+				"while",
+				"use",
+				"mod",
+				"trait",
+				"return"
+			}
 		)
 	)
 	registry.register(
-		Language(
-			"c",
-			"C",
-			[".c", ".h"],
+		Language (
+			id="c",
+			name="C",
+			extensions=[".c", ".h"],
+
 			comment="//",
-			indent="\t"
-		)
-	)
-	registry.register(
-		Language(
-			"cpp",
-			"C++",
-			[".cpp", ".cc", ".hpp"],
-			comment="//",
-			indent="\t"
-		)
-	)
-	registry.register(
-		Language(
-			"javascript",
-			"JavaScript",
-			[".js"],
-			comment="//",
-			indent="   "
-		)
-	)
-	registry.register(
-		Language(
-			"json",
-			"Json",
-			[".json"],
-			comment="",
-			indent="   "
-		)
-	)
-	registry.register(
-		Language(
-			"text",
-			"Plain Text",
-			[".txt"],
-		)
-	)
-	registry.register(
-		Language(
-			"pyxis",
-			"Pyxis",
-			[".pyx"],
-			comment="#",
-			indent="\t"
+
+			indent="\t",
+
+			keywords={
+				"int",
+				"char",
+				"size_t",
+				"ssize_t",
+				"double",
+				"class",
+				"if",
+				"else",
+				"return",
+				"for",
+				"while",
+				"&&",
+				"||"
+			}
 		)
 	)

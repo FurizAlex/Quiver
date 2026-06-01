@@ -14,7 +14,7 @@ class StatusBar:
 				f"{filename} | "
 				f"Ln {editor.pane.cursorY + 1} | "
 				f"Col {editor.pane.cursorX + 1} | "
-				f"{editor.buffer.language.upper()} | "
+				f"{editor.buffer.language.name.upper() if editor.buffer.language else 'TEXT'} | "
 				f"{editor.status}"
 			)
 

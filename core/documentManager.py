@@ -1,8 +1,8 @@
 from core.buffer import Buffer
 
 class DocumentManager:
-	def __init__(self):
-		self.buffers = [Buffer()]
+	def __init__(self, languageRegistry):
+		self.buffers = [Buffer(language=languageRegistry.get("text"))]
 		self.current = 0
 
 	@property

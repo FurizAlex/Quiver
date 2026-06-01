@@ -44,8 +44,6 @@ class Editor:
 
 		signal.signal(signal.SIGTSTP, signal.SIG_IGN)
 
-		from core.documentManager import DocumentManager
-		self.documents = DocumentManager()
 		self.history = History()
 		self.commands = CommandRegistry()
 		registerCommands(self.commands)
@@ -74,6 +72,9 @@ class Editor:
 
 		self.languageRegistry = LanguageRegistry()
 		registerLanguages(self.languageRegistry)
+
+		from core.documentManager import DocumentManager
+		self.documents = DocumentManager(self.languageRegistry)
 
 		self.showExplorer = self.settings.get("show_explorer")
 		self.explorerWidth = 30

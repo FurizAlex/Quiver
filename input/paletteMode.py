@@ -35,9 +35,12 @@ def execute(editor):
 
 	if not items:
 		return
-
 	item = items[editor.paletteSelection]
-	editor.commands.execute(editor, item["command"])
+
+	if editor.paletteMode == "files":
+		openFileBuffer(editor, item["path"])
+	else:
+		editor.commands.execute(editor, item["command"])
 	editor.paletteOpen = False
 
 def handle(editor, event):

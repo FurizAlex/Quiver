@@ -1,0 +1,16 @@
+{
+    "settings": {
+        "tab_width": 4,
+        "use_tabs": true,
+        "theme": "amiga",
+        "line_numbers": true,
+        "relative_numbers": false,
+        "auto_indent": true,
+        "auto_pairs": true,
+        "cursor_blink": true,
+        "wrap_text": false,
+        "scroll_offset": 5,
+        "font_size": 14,
+        "show_explorer": true
+    }
+}
