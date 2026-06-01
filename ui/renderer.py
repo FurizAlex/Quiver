@@ -105,7 +105,7 @@ class Renderer(RendererBase):
 	def drawTextLine(self, editor, paneIndex, pane, line, screenY, bufferY, paneWidth):
 		layout = editor.layout
 		startX = layout.textStartX(paneIndex)
-		buffer = editor.buffers[pane.bufferIndex]
+		buffer = editor.documents.buffers[pane.bufferIndex]
 		
 		tokens = self.lexer.tokenize(line, buffer.language)
 		x = startX
@@ -113,6 +113,11 @@ class Renderer(RendererBase):
 
 		for tokenText, tokenType in tokens:
 			for ch in tokenText:
+				if bufferX < pane.scrollX:
+					bufferX += 1
+					continue
+				if x >= startX + paneWidth:
+					return
 				attr = editor.theme.get(tokenType)
 				if editor.selection.contains(bufferX, bufferY):
 					attr = editor.theme.get("selection")
@@ -120,6 +125,11 @@ class Renderer(RendererBase):
 				self.safeAddstr(screenY + 1, x, ch, attr)
 				x += 1
 				bufferX += 1
+		while x < startX + paneWidth:
+			if editor.selection.contains(bufferX, bufferY):
+				self.safeAddstr(screenY, x, " ", editor.theme.get("selection"))
+			x += 1
+			bufferX += 1
 
 	def drawExplorer(self, editor):
 		h, _ = self.stdscr.getmaxyx()
