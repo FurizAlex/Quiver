@@ -1,17 +1,31 @@
 import json
 import os
 
-CONFIG_PATH = os.path.expanuser("~/.quiver/config.json")
+CONFIG_FILE = "config.json"
 
 class ConfigManager:
-	def load(self):
-		try:
-			with open(CONFIG_PATH) as f:
-				return json.load(f)
-		except:
-			return {}
+	def __init__(self):
+		self.data = {}
 
-	def save(self, settings):
-		os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-		with open(CONFIG_PATH, "W") as f:
-			json.dump(settings, f, indent=4)
+	def load(self):
+		if not os.path.exists(CONFIG_FILE):
+			self.data = {}
+			return
+		try:
+			with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+				self.data = json.load(f)
+		except Exception:
+			self.data = {}
+
+	def save(self):
+		try:
+			with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+				json.dump(self.data, f, indent=4)
+		except Exception:
+			pass
+
+	def get(self, key, default=None):
+		return self.data.get(key, default)
+
+	def set(self, key, value):
+		self.data[key] = value

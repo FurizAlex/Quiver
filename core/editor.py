@@ -7,8 +7,9 @@ from core.cursor import Cursor
 from core.history import History
 from ui.renderer import Renderer
 
+from config.configManager import ConfigManager
 from core.commandRegistry import CommandRegistry
-from core.registerCommands import registerCommands
+from commands.registerCommands import registerCommands
 
 from core.selection import Selection
 from core.clipboard import Clipboard
@@ -22,6 +23,9 @@ from ui.pane import Pane
 from ui.theme import Theme
 
 from input.commandMode import handle as handleCommand
+
+from syntax.languageRegistry import LanguageRegistry
+from syntax.registerLanguages import registerLanguages
 
 class Editor:
 	def __init__(self, stdscr):
@@ -55,15 +59,23 @@ class Editor:
 		self.clipboard = Clipboard()
 
 		self.settings = Settings()
+		self.config = ConfigManager()
+		self.config.load()
+
+		self.settings.load(self.config.get("settings", {}))
+
 		self.theme = Theme()
+		self.currentTheme = self.settings.get("theme")
+		self.theme.load(self.currentTheme)
 		self.plugins = PluginManager()
-		self.currentTheme = "amiga"
-		self.theme.load("amiga")
 		self.theme.initialize()
 		self.layout = Layout(self)
 		self.renderer = Renderer(stdscr)
 
-		self.showExplorer = True
+		self.languageRegistry = LanguageRegistry()
+		registerLanguages(self.languageRegistry)
+
+		self.showExplorer = self.settings.get("show_explorer")
 		self.explorerWidth = 30
 		self.explorerPath = "."
 		self.explorerFiles = []
@@ -167,6 +179,10 @@ class Editor:
 			self.explorerFiles = sorted(os.listdir(self.explorerPath))
 		except:
 			self.explorerFiles = []
+
+	def saveConfig(self):
+		self.config.set("settings", self.settings.export())
+		self.config.save()
 
 	@property
 	def buffer(self):

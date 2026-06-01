@@ -104,14 +104,21 @@ class Renderer(RendererBase):
 
 	def drawTextLine(self, editor, paneIndex, pane, line, screenY, bufferY, paneWidth):
 		layout = editor.layout
-		startX = layout.textStartX(paneIndex)		
-		text = line[pane.scrollX:]		
-		self.safeAddstr(
-			screenY + 1,
-			startX,
-			text,
-			editor.theme.get("text")
-		)
+		startX = layout.textStartX(paneIndex)
+		buffer = editor.buffers[pane.bufferIndex]
+		tokens = self.lexer.tokenize(line, buffer.language)
+		x = startX
+		bufferX = 0
+
+		for tokenText, tokenType in tokens:
+			for ch in tokenText:
+				attr = editor.theme.get(tokenType)
+				if editor.selection.contains(bufferX, bufferY):
+					attr = editor.theme.get("selection")
+
+					self.safeAddstr(screenY + 1, x, ch, attr)
+					x += 1
+					bufferX += 1
 
 	def drawExplorer(self, editor):
 		h, _ = self.stdscr.getmaxyx()

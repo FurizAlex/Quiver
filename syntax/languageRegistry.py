@@ -1,20 +1,24 @@
-class Language:
-	def __init__(self, name, extensions):
-		self.name = name
-		self.extensions = extensions
+import os
+from syntax.language import Language
 
 class LanguageRegistry:
 	def __init__(self):
-		self.languages = []
+		self.languages = {}
 
 	def register(self, language):
-		self.language.append(language)
+		self.languages[language.id] = language
+
+	def get(self, languageId):
+		return self.languages.get(languageId)
 
 	def detect(self, filename):
-		import os
-
 		_, ext = os.path.splitext(filename)
-		for language in self.languages:
+		ext = ext.lower()
+
+		for language in self.languages.values():
 			if ext in language.extensions:
-				return language.name
-		return "text"
+				return language
+		return self.languages["text"]
+	
+	def all(self):
+		return list(self.languages.values())

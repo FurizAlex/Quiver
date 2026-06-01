@@ -37,11 +37,7 @@ def execute(editor):
 		return
 
 	item = items[editor.paletteSelection]
-	if "command" in item:
-		editor.commands.execute(editor, item["command"])
-		editor.paletteOpen = False
-		return
-	editor.commands.execute(editor, item["action"])
+	editor.commands.execute(editor, item["command"])
 	editor.paletteOpen = False
 
 def handle(editor, event):
@@ -73,10 +69,10 @@ def openCommandPalette(editor):
 	editor.paletteSelection = 0
 	editor.paletteItems = []
 
-	for command in editor.commands.list():
+	for command in editor.commands.all():
 		editor.paletteItems.append({
-			"name": command.replace("_", " ").title(),
-			"action": command
+			"name": command.title,
+			"command": command.name
 		})
 
 def openFilePalette(editor):

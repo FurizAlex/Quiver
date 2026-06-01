@@ -1,92 +1,37 @@
 THEME = {
-	# METADATA
-    "meta": {
-        "name": "Amiga",
-        "author": "FurizAlex",
-        "version": "1.0"
-    },
+	"meta": {
+		"name": "Amiga"
+	},
 
-    "defaults": {
-        "fg": "white",
-        "bg": "default"
-    },
+	"defaults": {
+		"fg": "white",
+		"bg": "blue"
+	},
 
-    "text": {},
+	"text": {
+		"fg": "white",
+		"bg": "blue"
+	},
 
-    "keyword": {
-        "fg": "cyan",
-        "bold": True
-    },
+	"selection": {
+		"fg": "blue",
+		"bg": "white"
+	},
 
-    "string": {
-        "fg": "yellow"
-    },
+	"keyword": {
+		"fg": "yellow",
+		"bold": True
+	},
 
-    "comment": {
-        "fg": "green"
-    },
+	"string": {
+		"fg": "cyan"
+	},
 
-    "cursorline": {
-        "dim": True
-    },
+	"comment": {
+		"fg": "green"
+	},
 
-    "selection": {
-        "reverse": True
-    },
-
-    "lineNumber": {
-        "fg": "cyan",
-        "dim": True
-    },
-
-    "currentLineNumber": {
-        "fg": "white",
-        "bold": True
-    },
-
-    "statusBar": {
-        "reverse": True
-    },
-
-    "tab": {},
-
-    "activeTab": {
-        "reverse": True
-    },
-
-    "explorerTitle": {
-        "bold": True
-    },
-
-    "explorerItem": {},
-
-    "explorerSelection": {
-        "reverse": True
-    },
-
-    "paletteBorder": {
-        "fg": "cyan"
-    },
-
-    "paletteTitle": {
-        "bold": True
-    },
-
-    "paletteItem": {},
-
-    "paletteSelection": {
-        "reverse": True
-    },
-
-    "splitter": {
-        "dim": True
-    },
-
-    "activeSplitter": {
-        "bold": True
-    },
-
-    "searchBar": {
-        "reverse": True
-    }
+	"text": {
+		"fg": "white"
+	},
 }

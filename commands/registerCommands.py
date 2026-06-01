@@ -5,18 +5,19 @@ from commands.uiCommands import splitPane, closePane, nextPane, toggleExplorer
 from commands.editCommands import undo, redo
 
 def registerCommands(registry):
-	registry.register("save_file", save)
-	registry.register("next_buffer", nextBuffer)
-	registry.register("previous_buffer", previousBuffer)
-	registry.register("close_file", closeBuffer)
-	registry.register("split_pane", splitPane)
-	registry.register("close_pane", closePane)
-	registry.register("next_pane", nextPane)
-	registry.register("toggle_explorer", toggleExplorer)
-	registry.register("undo", undo)
-	registry.register("redo", redo)
+	registry.register("save_file", save, "Save File", "File")
+	registry.register("next_buffer", nextBuffer, "Next Buffer", "Buffer")
+	registry.register("previous_buffer", previousBuffer, "Previous Buffer", "Buffer")
+	registry.register("close_file", closeBuffer, "Close File", "File")
+	registry.register("split_pane", splitPane, "Split Pane", "View")
+	registry.register("close_pane", closePane, "Close Pane", "View")
+	registry.register("next_pane", nextPane, "Next Pane", "View")
+	registry.register("toggle_explorer", toggleExplorer, "Toggle Explorer", "View")
+	registry.register("undo", undo, "Undo", "Edit")
+	registry.register("redo", redo, "Redo", "Edit")
 
 	def quitEditor(editor):
+		editor.saveConfig()
 		editor.running = False
 
-	registry.register("quit", quitEditor)
+	registry.register("quit", quitEditor, "Quit", "File")
