@@ -1,3 +1,5 @@
+from core.diagnosticManager import DiagnosticManager
+
 class Buffer:
 	def __init__(self, filename=None, language=None):
 		self.filename = filename
@@ -6,6 +8,8 @@ class Buffer:
 		self.lines = [""]
 		self.modified = False
 
+		self.diagnostics = DiagnosticManager()
+		
 	@property
 	def name(self):
 		if self.filename:

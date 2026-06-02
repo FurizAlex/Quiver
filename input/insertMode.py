@@ -1,9 +1,10 @@
 import curses
 
 from input.keys import *
-from input.movement import *
 from input.shortcuts import handleShortcut
 from input.keymap import KEYMAP
+
+from core.navigation import *
 
 from commands.fileCommands import save
 
@@ -141,7 +142,6 @@ def handle(editor, event):
 		if selection.active:
 			deleteSelection(editor)
 		elif cursor.cursorX > 0:
-			saveUndo(editor)
 			buffer.deleteChar(cursor.cursorX, cursor.cursorY)
 			cursor.cursorX -= 1
 		elif cursor.cursorY > 0:
@@ -151,12 +151,10 @@ def handle(editor, event):
 			cursor.cursorY -= 1
 			cursor.cursorX = prev
 	elif event.shift and key == "LEFT":
-		saveUndo(editor)
 		startOrUpdateSelection(editor)
 		moveLeft(buffer, cursor)
 		selection.update(cursor.cursorX, cursor.cursorY)
 	elif event.shift and key == "RIGHT":
-		saveUndo(editor)
 		startOrUpdateSelection(editor)
 		moveRight(buffer, cursor)
 		selection.update(cursor.cursorX, cursor.cursorY)
@@ -169,19 +167,15 @@ def handle(editor, event):
 	#	moveDown(buffer, cursor)
 	#	selection.update(cursor.cursorX, cursor.cursorY)
 	elif key == "LEFT":
-		saveUndo(editor)
 		selection.clear()
 		moveLeft(buffer, cursor)
 	elif key == "RIGHT":
-		saveUndo(editor)
 		selection.clear()
 		moveRight(buffer, cursor)
 	elif key == "UP":
-		saveUndo(editor)
 		selection.clear()
 		moveUp(buffer, cursor)
 	elif key == "DOWN":
-		saveUndo(editor)
 		selection.clear()
 		moveDown(buffer, cursor)
 	#elif key == KEY_CTRL_SHIFT_LEFT:

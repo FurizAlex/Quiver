@@ -185,6 +185,15 @@ class Editor:
 		self.config.set("settings", self.settings.export())
 		self.config.save()
 
+	def captureState(self):
+		pane = self.panes[self.activePane]
+
+		return {
+			"lines": list(self.documents.active.lines),
+			"cursorX": pane.cursorX,
+			"cursorY": pane.cursorY
+		}
+
 	@property
 	def buffer(self):
 		index = self.pane.bufferIndex

@@ -8,7 +8,7 @@ class Plugin:
 	def onSave(self, editor):
 		pass
 
-	def onBufferOpen(self, editor, buffer):
+	def onOpen(self, editor, buffer):
 		pass
 
 	def onCommand(self, editor, commandName):

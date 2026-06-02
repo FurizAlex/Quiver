@@ -3,11 +3,11 @@ class History:
 		self.undoStack = []
 		self.redoStack = []
 
-	def push(self, lines, x, y):
+	def push(self, lines, cursorX, cursorY):
 		state = (
-			lines.copy(),
-			x,
-			y
+			list(lines),
+			cursorX,
+			cursorY
 		)
 		self.undoStack.append(state)
 		self.redoStack.clear()

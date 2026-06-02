@@ -13,7 +13,7 @@ def save(editor):
 		editor.saving = True
 		editor.saveInput = ""
 		editor.status = "Save as: "
-	editor.plugins.dispatch("onSave", editor)
+	editor.plugins.dispatchSave(editor)
 	
 def openFileBuffer(editor, filename):
 	for i, buffer in enumerate(editor.buffers):

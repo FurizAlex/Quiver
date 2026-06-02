@@ -3,6 +3,7 @@ import curses
 class StatusBar:
 	def draw(self, stdscr, editor, h, w):
 		filename = editor.filename or "[NO FILE]"
+		diagnosticCount = editor.buffer.diagnostics.count()
 
 		if editor.saving:
 			left = (
@@ -12,6 +13,7 @@ class StatusBar:
 			left = (
 				f" {editor.mode} | "
 				f"{filename} | "
+				f"Diag {diagnosticCount} | "
 				f"Ln {editor.pane.cursorY + 1} | "
 				f"Col {editor.pane.cursorX + 1} | "
 				f"{editor.buffer.language.name.upper() if editor.buffer.language else 'TEXT'} | "

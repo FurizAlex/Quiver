@@ -13,6 +13,10 @@ THEME = {
 		"bg": "blue"
 	},
 
+	"diagnosticError": {
+		"fg": "red"
+	},
+
 	"selection": {
 		"fg": "blue",
 		"bg": "white"

@@ -11,6 +11,8 @@ def undo(editor):
 	pane.cursorX = state[1]
 	pane.cursorY = state[2]
 
+	buffer.ensureValid()
+
 def redo(editor):
 	buffer = editor.buffer
 	pane = editor.pane
@@ -23,3 +25,5 @@ def redo(editor):
 	
 	pane.cursorX = state[1]
 	pane.cursorY = state[2]
+
+	buffer.ensureValid()

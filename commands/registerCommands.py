@@ -1,5 +1,6 @@
 from commands.fileCommands import save
 from commands.fileCommands import openFileBuffer
+from commands.diagnosticCommands import nextDiagnostic
 from commands.bufferCommands import nextBuffer, previousBuffer, closeBuffer
 from commands.uiCommands import splitPane, closePane, nextPane, toggleExplorer
 from commands.editCommands import undo, redo
@@ -13,6 +14,7 @@ def registerCommands(registry):
 	registry.register("close_pane", closePane, "Close Pane", "View")
 	registry.register("next_pane", nextPane, "Next Pane", "View")
 	registry.register("toggle_explorer", toggleExplorer, "Toggle Explorer", "View")
+	registry.register("next_diagnostic", nextDiagnostic, "Next Diagnostic", "Diagnostics")
 	registry.register("undo", undo, "Undo", "Edit")
 	registry.register("redo", redo, "Redo", "Edit")
 

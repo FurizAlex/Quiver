@@ -35,7 +35,7 @@ def moveDown(buffer, cursor):
 
 	cursor.cursorX = min(cursor.cursorX, len(line))
 
-def moveHome(cursor):
+def moveHome(buffer, cursor):
 	cursor.cursorX = 0
 
 def moveEnd(buffer, cursor):

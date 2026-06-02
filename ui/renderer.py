@@ -93,8 +93,11 @@ class Renderer(RendererBase):
 	def drawLineNumber(self, editor, startX, screenY, bufferY):
 		pane = editor.panes[editor.activePane]
 		lineNumber = (str(bufferY + 1).rjust(4) + " ")
+		diagnostics = editor.buffer.diagnostics.atLine(bufferY)
 		attr = editor.theme.get("lineNumber")
 
+		if diagnostics:
+			attr = editor.theme.get("diagnosticError")
 		if bufferY == pane.cursorY:
 			attr = editor.theme.get("currentLineNumber")
 		try:
