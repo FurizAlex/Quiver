@@ -1,6 +1,4 @@
-<div style="margin-top: 20px;">
-  <img src='assets/icons/quiver.svg' width=40 style="position: relative; top: 10px;"> <strong><span style="font-size: 256px;">Quiver</span></strong>
-</div>
+# <img src='assets/icons/quiver.svg' width=32> Quiver
 Quiver is a relatively simple editor
 
 It was created for the sole purpose of replacing vscode as my main code editor
