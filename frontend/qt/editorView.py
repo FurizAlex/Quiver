@@ -6,8 +6,8 @@ from frontend.qt.amigaPalette import *
 from frontend.qt.qtTranslator import translateKey, translateMouse
 
 class EditorView(QWidget):
+	cursorChanged = pyqtSignal(int, int)
 	def __init__(self, editor):
-		cursorChanged = pyqtSignal(int, int)
 		super().__init__()
 		self.editor = editor
 		self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -41,7 +41,8 @@ class EditorView(QWidget):
 		metrics = QFontMetrics(self.font())
 		lineHeight = metrics.height()
 		pane = self.editor.pane
-		visibleLines = pane.buffer.lines[pane.scrollY: pane.scrollY + 100]
+		visibleCount = self.height() // lineHeight + 1
+		visibleLines = pane.buffer.lines[pane.scrollY: pane.scrollY + visibleCount]
 		y = lineHeight
 
 		for lineNumber, text in enumerate(visibleLines):
@@ -62,7 +63,7 @@ class EditorView(QWidget):
 		charWidth = metrics.horizontalAdvance("M")
 		lineHeight = metrics.height()
 		x = self.gutterWidth + 8 + ((pane.cursorX - pane.scrollX) * charWidth)
-		y = (pane.cursorY - pane.scrollY + 1 * lineHeight)
+		y = ((pane.cursorY - pane.scrollY + 1) * lineHeight)
 		painter.fillRect(x, y - lineHeight + 2, 2, lineHeight, QColor(TEXT))
 
 	def drawSelection(self, painter):
@@ -71,12 +72,14 @@ class EditorView(QWidget):
 	def keyPressEvent(self, event):
 		inputEvent = translateKey(event)
 		self.editor.handleInput(inputEvent)
+		self.editor.updateScroll()
 		self.update()
 		self.emitCursor()
 
 	def mousePressEvent(self, event):
 		inputEvent = translateMouse(event)
 		self.editor.handleInput(inputEvent)
+		self.editor.updateScroll()
 		self.update()
 		self.emitCursor()
 

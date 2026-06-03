@@ -15,7 +15,6 @@ def closeBuffer(editor):
 		editor.status = "Cannot close last buffer"
 		return
 	closing = editor.currentBuffer
-	editor.buffers.pop(closing)
 
 	closingBuffer = editor.buffers[closing]
 	editor.buffers.pop(closing)

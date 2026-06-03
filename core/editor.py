@@ -216,3 +216,12 @@ class Editor:
 	@currentBuffer.setter
 	def currentBuffer(self, value):
 		self.documents.current = value
+
+	def notifyChanged(self):
+		pass
+
+	def notifyCursorMoved(self):
+		pass
+
+	def notifyStatusChanged(self):
+		pass

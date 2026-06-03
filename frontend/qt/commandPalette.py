@@ -20,6 +20,6 @@ class CommandPalette(QDialog):
 	def filterCommands(self, text):
 		self.results.clear()
 
-		for command in self.editor.commands:
+		for command in self.editor.commands.all():
 			if text.lower() in command.name.lower():
 				self.results.addItem(command.name)

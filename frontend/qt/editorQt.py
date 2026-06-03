@@ -9,12 +9,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+class EditorSignals(QObject):
+	changed = pyqtSignal()
+	cursorMoved = pyqtSignal()
+	statusChanged = pyqtSignal()
+	def __init__(self):
+		super().__init__()
+
 class EditorQt(Editor):
 	def __init__(self):
 		super().__init__(None)
 		self.signals = EditorSignals()
 
-class EditorSignals(QObject):
-	changed = pyqtSignal()
-	def __init__(self):
-		super().__init__()
+	def notifyChanged(self):
+		self.signals.changed.emit()
+
+	def notifyCursorMoved(self):
+		self.signals.cursorMoved.emit()
+
+	def notifyStatusChanged(self):
+		self.signals.statusChanged.emit()

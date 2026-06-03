@@ -41,7 +41,7 @@ class Buffer:
 			line[:x - 1] + line[x:]
 		)
 		self.modified = True
-		editor.signals.changed.emit()
+		self.editor.notifyChanged()
 
 	def splitLine(self, x, y):
 		line = self.lines[y]

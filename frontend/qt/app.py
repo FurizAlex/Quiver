@@ -4,8 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from core.editor import Editor
-from frontend.qt.editorQt import EditorSignals
+from frontend.qt.editorQt import EditorQt, EditorSignals
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSplitter
 from frontend.qt.statusBar import StatusBar
@@ -16,7 +15,7 @@ from frontend.qt.explorer import Explorer
 class MainWindow(QMainWindow):
 	def __init__(self):
 		super().__init__()
-		self.editor = Editor(None)
+		self.editor = EditorQt()
 		self.signals = EditorSignals()
 		central = QWidget()
 		layout = QVBoxLayout()

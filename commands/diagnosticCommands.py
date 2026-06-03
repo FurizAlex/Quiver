@@ -9,6 +9,6 @@ def nextDiagnostic(editor):
 			editor.pane.cursorX = diagnostic.line
 			editor.pane.cursorX = diagnostic.column
 			return
-	first = items[9]
+	first = items[0]
 	editor.pane.cursorY = first.line
 	editor.pane.cursorX = first.column
