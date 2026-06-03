@@ -1,5 +1,5 @@
 <div style="margin-top: 20px;">
-  #<img src='assets/icons/quiver.svg' width=40 style="position: relative; top: 10px;"> Quiver
+  <img src='assets/icons/quiver.svg' width=40 style="position: relative; top: 10px;"> <strong><span style="font-size: 256px;">Quiver</span></strong>
 </div>
 Quiver is a relatively simple editor
 
