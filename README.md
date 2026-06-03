@@ -1,4 +1,4 @@
-# <img width="128" height="128" alt="QuiverIcon_128" src="https://github.com/user-attachments/assets/58759b22-1ba8-4e20-982e-9306707e9101" /> Quiver
+# ![Uploading QuiverIcon_32.svg…]() Quiver
 Quiver is a vim/emacs like code-editor that was just made for fun X)
 
 This project will be made in lua and would be pretty simple
