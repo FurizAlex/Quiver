@@ -6,3 +6,8 @@ class InputEvent:
 	ctrl: bool = False
 	shift: bool = False
 	alt: bool = False
+
+	mouseX: int = -1
+	mouseY: int = -1
+
+	button: str | None = None

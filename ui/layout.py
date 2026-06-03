@@ -4,8 +4,7 @@ class Layout:
 		self.lineNumberWidth = 6
 
 	def paneWidth(self):
-		h, w = self.editor.stdscr.getmaxyx()
-		width = w - 2
+		width = self.editor.screenWidth - 2
 
 		if self.editor.showExplorer:
 			width -= self.editor.explorerWidth + 1
@@ -26,6 +25,4 @@ class Layout:
 		)
 
 	def paneVisibleHeight(self):
-		h, _ = self.editor.stdscr.getmaxyx()
-
-		return h - 2
+		return self.editor.screenHeight - 2

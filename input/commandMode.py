@@ -29,7 +29,7 @@ def handle(editor, key):
 			if editor.filename:
 				editor.status = saveFile(
 					editor.filename,
-					editor.buffer.lines
+					editor.pane.buffer.lines
 				)
 		editor.mode = "NORMAL"
 	elif key == 127:

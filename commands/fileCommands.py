@@ -4,9 +4,9 @@ from util.fileio import openFile
 from core.buffer import Buffer
 
 def save(editor):
-	if editor.buffer.filename:
-		result = saveFile(editor.buffer.filename, editor.buffer.lines)
-		editor.buffer.modified = False
+	if editor.pane.buffer.filename:
+		result = saveFile(editor.pane.buffer.filename, editor.pane.buffer.lines)
+		editor.pane.buffer.modified = False
 		editor.status = result
 		editor.statusTimer = 120
 	else:
@@ -19,7 +19,7 @@ def openFileBuffer(editor, filename):
 	for i, buffer in enumerate(editor.buffers):
 		if buffer.filename == filename:
 			editor.currentBuffer = i
-			editor.pane.bufferIndex = i
+			editor.pane.buffer = editor.buffers[i]
 			editor.status = (f"Switched to {filename}")
 			return
 	newBuffer = Buffer()
@@ -33,7 +33,7 @@ def openFileBuffer(editor, filename):
 	
 	newIndex = len(editor.buffers) - 1
 	editor.currentBuffer = newIndex
-	editor.pane.bufferIndex = newIndex
+	editor.pane.buffer = newBuffer
 
 	editor.plugins.dispatchOpen(editor, filename)
 	editor.plugins.dispatchBufferCreated(editor, newBuffer)

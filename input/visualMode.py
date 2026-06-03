@@ -1,9 +1,9 @@
 import curses
 
 def handle(editor, key):
-	cursor = editor.cursor
+	cursor = editor.pane.cursor
 	selection = editor.selection
-	buffer = editor.buffer
+	buffer = editor.pane.buffer
 
 	match key:
 		case 27:

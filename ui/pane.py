@@ -2,8 +2,8 @@ from core.cursor import Cursor
 from core.viewport import Viewport
 
 class Pane:
-	def __init__(self, bufferIndex=0):
-		self.bufferIndex = bufferIndex
+	def __init__(self, buffer=None):
+		self.buffer = buffer
 		
 		self.cursor = Cursor()
 		self.viewport = Viewport()

@@ -1,10 +1,3 @@
-def clampCursor(buffer, cursor):
-	cursor.cursorY = max(0, min(cursor.cursorY, len(buffer.lines) - 1))
-
-	line = buffer.lines[cursor.cursorY]
-
-	cursor.cursorX = max(0, min(cursor.cursorX, len(line)))
-
 def moveLeft(buffer, cursor):
 	if cursor.cursorX > 0:
 		cursor.cursorX -= 1

@@ -1,7 +1,8 @@
 from core.diagnosticManager import DiagnosticManager
 
 class Buffer:
-	def __init__(self, filename=None, language=None):
+	def __init__(self, editor, filename=None, language=None):
+		self.editor = editor
 		self.filename = filename
 		self.language = language
 
@@ -40,6 +41,7 @@ class Buffer:
 			line[:x - 1] + line[x:]
 		)
 		self.modified = True
+		editor.signals.changed.emit()
 
 	def splitLine(self, x, y):
 		line = self.lines[y]

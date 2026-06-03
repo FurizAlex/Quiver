@@ -1,5 +1,5 @@
 def nextDiagnostic(editor):
-	items = editor.buffer.diagnostics.all()
+	items = editor.pane.buffer.diagnostics.all()
 
 	if not items:
 		return

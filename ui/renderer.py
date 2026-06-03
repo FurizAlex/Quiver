@@ -59,7 +59,7 @@ class Renderer(RendererBase):
 		self.stdscr.border()
 
 	def drawPane(self, editor, paneIndex, pane):
-		buffer = editor.buffers[pane.bufferIndex]
+		buffer = pane.buffer
 		layout = editor.layout
 		startX = layout.paneStartX(paneIndex)
 		paneWidth = layout.paneWidth()
@@ -93,7 +93,7 @@ class Renderer(RendererBase):
 	def drawLineNumber(self, editor, startX, screenY, bufferY):
 		pane = editor.panes[editor.activePane]
 		lineNumber = (str(bufferY + 1).rjust(4) + " ")
-		diagnostics = editor.buffer.diagnostics.atLine(bufferY)
+		diagnostics = editor.pane.buffer.diagnostics.atLine(bufferY)
 		attr = editor.theme.get("lineNumber")
 
 		if diagnostics:
@@ -108,7 +108,7 @@ class Renderer(RendererBase):
 	def drawTextLine(self, editor, paneIndex, pane, line, screenY, bufferY, paneWidth):
 		layout = editor.layout
 		startX = layout.textStartX(paneIndex)
-		buffer = editor.documents.buffers[pane.bufferIndex]
+		buffer = pane.buffer
 		
 		tokens = self.lexer.tokenize(line, buffer.language)
 		x = startX

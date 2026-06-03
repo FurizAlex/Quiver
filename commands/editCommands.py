@@ -1,5 +1,5 @@
 def undo(editor):
-	buffer = editor.buffer
+	buffer = editor.pane.buffer
 	pane = editor.pane
 
 	currentState = (buffer.lines.copy(), pane.cursorX, pane.cursorY)
@@ -14,7 +14,7 @@ def undo(editor):
 	buffer.ensureValid()
 
 def redo(editor):
-	buffer = editor.buffer
+	buffer = editor.pane.buffer
 	pane = editor.pane
 
 	currentState = (buffer.lines.copy(), pane.cursorX, pane.cursorY)

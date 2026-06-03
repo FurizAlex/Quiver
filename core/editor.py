@@ -1,4 +1,3 @@
-import curses
 import signal
 import os
 
@@ -28,28 +27,25 @@ from syntax.languageRegistry import LanguageRegistry
 from syntax.registerLanguages import registerLanguages
 
 class Editor:
-	def __init__(self, stdscr):
+	def __init__(self, stdscr=None):
 		self.stdscr = stdscr
 
-		curses.cbreak()
-		curses.noecho()
-		curses.curs_set(1)
-
-		stdscr.keypad(True)
-		curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
-		stdscr.timeout(16)
-
-		curses.start_color()
-		curses.use_default_colors()
+		if stdscr is not None:
+			import curses
+			curses.cbreak()
+			curses.noecho()
+			curses.curs_set(1)
+			stdscr.keypad(True)
+			curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+			stdscr.timeout(16)
+			curses.start_color()
+			curses.use_default_colors()
 
 		signal.signal(signal.SIGTSTP, signal.SIG_IGN)
 
 		self.history = History()
 		self.commands = CommandRegistry()
 		registerCommands(self.commands)
-
-		self.panes = [Pane(0)]
-		self.activePane = 0
 
 		self.statusTimer = 0
 
@@ -62,19 +58,25 @@ class Editor:
 
 		self.settings.load(self.config.get("settings", {}))
 
-		self.theme = Theme()
-		self.currentTheme = self.settings.get("theme")
-		self.theme.load(self.currentTheme)
+		if stdscr is not None:
+			self.theme = Theme()
+			self.currentTheme = self.settings.get("theme")
+			self.theme.load(self.currentTheme)
+			self.theme.initialize()
 		self.plugins = PluginManager()
-		self.theme.initialize()
 		self.layout = Layout(self)
-		self.renderer = Renderer(stdscr)
+		self.renderer = None
+		if stdscr is not None:
+			self.renderer = Renderer(stdscr)
 
 		self.languageRegistry = LanguageRegistry()
 		registerLanguages(self.languageRegistry)
 
 		from core.documentManager import DocumentManager
-		self.documents = DocumentManager(self.languageRegistry)
+		self.documents = DocumentManager(self, self.languageRegistry)
+
+		self.panes = [Pane(self.documents.active)]
+		self.activePane = 0
 
 		self.showExplorer = self.settings.get("show_explorer")
 		self.explorerWidth = 30
@@ -105,6 +107,8 @@ class Editor:
 
 		self.command = ""
 
+		self.screenWidth = 80
+		self.screenHeight = 25
 		self.scrollY = 0
 		self.scrollX = 0
 		self.refreshExplorer()
@@ -133,10 +137,10 @@ class Editor:
 			f"KEY={event.key} "
 			f"CTRL={event.ctrl}"
 		)
-		if event.key == curses.KEY_MOUSE:
+		if event.key == "MOUSE":
 			from input.mouseMode import handleMouse
 
-			handleMouse(self)
+			handleMouse(self, event)
 			return
 		from input.registry import INPUT_HANDLERS
 
@@ -158,8 +162,6 @@ class Editor:
 			handler(self, event)
 
 	def updateScroll(self):
-		h, w = self.stdscr.getmaxyx()
-
 		pane = self.pane
 		visibleHeight = (self.layout.paneVisibleHeight())
 
@@ -193,39 +195,15 @@ class Editor:
 			"cursorX": pane.cursorX,
 			"cursorY": pane.cursorY
 		}
-
-	@property
-	def buffer(self):
-		index = self.pane.bufferIndex
-		
-		#if index >= len(self.buffers):
-		#	print("BUFFER DESYNC:", "pane.bufferIndex =", index, "Buffers =", len(self.buffers))
-		self.pane.bufferIndex = max(0, len(self.buffers) - 1)
-		return self.buffers[self.pane.bufferIndex]
+	
+	def resize(self, width, height):
+		self.screenWidth = width
+		self.screenHeight = height
 
 	@property
 	def pane(self):
 		return self.panes[self.activePane]
 
-	@property
-	def cursor(self):
-		return self.pane
-
-	@property
-	def scrollY(self):
-		return self.pane.scrollY
-
-	@scrollY.setter
-	def scrollY(self, value):
-		self.pane.scrollY = value
-
-	@property
-	def scrollX(self):
-		return self.pane.scrollX
-
-	@scrollX.setter
-	def scrollX(self, value):
-		self.pane.scrollX = value
 
 	@property
 	def buffers(self):
@@ -238,7 +216,3 @@ class Editor:
 	@currentBuffer.setter
 	def currentBuffer(self, value):
 		self.documents.current = value
-
-	@property
-	def activeBuffer(self):
-		return self.documents.active

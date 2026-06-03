@@ -6,7 +6,7 @@ def toggleExplorer(editor):
 def splitPane(editor):
 	current = editor.pane
 
-	newPane = Pane(current.bufferIndex)
+	newPane = Pane(current.buffer)
 	newPane.cursorX = current.cursorX
 	newPane.cursorY = current.cursorY
 

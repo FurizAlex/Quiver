@@ -12,14 +12,14 @@ def handle(editor, key):
 		if filename:
 			editor.filename = filename
 			
-			editor.buffer.filename = filename
+			editor.pane.buffer.filename = filename
 
 			from syntax.filetypes import detect
 
-			editor.buffer.language = detect(filename)
+			editor.pane.buffer.language = detect(filename)
 
-			editor.buffer.modified = False
-			editor.status = saveFile(filename, editor.buffer.lines)
+			editor.pane.buffer.modified = False
+			editor.status = saveFile(filename, editor.pane.buffer.lines)
 			editor.statusTimer = 120
 		editor.saving = False
 		return

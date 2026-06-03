@@ -9,8 +9,8 @@ def handle(editor, key):
 			line = int(editor.gotoInput)
 			line -= 1
 			line = max(0, min(line, len(editor.buffers.lines) - 1))
-			editor.cursor.cursorY = line
-			editor.cursor.cursorX = 0
+			editor.pane.cursor.cursorY = line
+			editor.pane.cursor.cursorX = 0
 		except:
 			pass
 		editor.gotoMode = False

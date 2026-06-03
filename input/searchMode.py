@@ -1,12 +1,12 @@
 import curses
 
 def performSearch(editor):
-	for y, line in enumerate(editor.buffer.lines):
+	for y, line in enumerate(editor.pane.buffer.lines):
 		index = line.find(editor.searchInput)
 
 		if index != -1:
-			editor.cursor.cursorY = y
-			editor.cursor.cursorX = index
+			editor.pane.cursor.cursorY = y
+			editor.pane.cursor.cursorX = index
 			return
 	editor.status = f"Not found: {editor.searchInput}"
 	editor.statusTimer = 120
