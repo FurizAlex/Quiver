@@ -1,4 +1,4 @@
-# <img src='assets/icons/quiver.svg' width=48> <h1 align="center">Quiver</h1>
+# <h1 <img src='assets/icons/quiver.svg' width=48> align="center">Quiver</h1>
 Quiver is a relatively simple editor
 
 It was created for the sole purpose of replacing vscode as my main code editor
