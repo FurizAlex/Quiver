@@ -10,8 +10,12 @@ class Explorer(QListWidget):
 
 	def rebuild(self):
 		self.clear()
-		for item in sorted(os.listdir(".")):
-			self.addItem(item)
+		path = self.editor.explorerPath
+		try:
+			for item in sorted(os.listdir(self.editor.explorerPath)):
+				self.addItem(item)
+		except Exception:
+			pass
 
 	def openFile(self, index):
 		item = self.item(index)

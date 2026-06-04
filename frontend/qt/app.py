@@ -21,7 +21,10 @@ class MainWindow(QMainWindow):
 		layout = QVBoxLayout()
 
 		self.explorer = Explorer(self.editor)
+		self.explorer.rebuild()
+
 		self.tabs = TabBar(self.editor)
+		self.tabs.rebuild()
 		self.views = EditorView(self.editor)
 		self.statusBarWidget = StatusBar()
 

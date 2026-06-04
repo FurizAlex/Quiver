@@ -1,9 +1,11 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtGui import QPainter, QColor, QFont, QFontMetrics
+from PyQt6.QtGui import QPainter, QColor, QFont, QFontMetrics, QTextFormat
+from PyQt6.QtWidgets import QTextEdit
 
 from frontend.qt.amigaPalette import *
 from frontend.qt.qtTranslator import translateKey, translateMouse
+from syntax.lexer import Lexer
 
 class EditorView(QWidget):
 	cursorChanged = pyqtSignal(int, int)
@@ -16,7 +18,7 @@ class EditorView(QWidget):
 		font.setPointSize(14)
 		self.setFont(font)
 		self.gutterWidth = 60
-
+		self.lexer = Lexer()
 		self.editor.signals.changed.connect(self.update)
 
 	def resizeEvent(self, event):
@@ -27,9 +29,10 @@ class EditorView(QWidget):
 		painter = QPainter(self)
 		self.drawBackground(painter)
 		self.drawGutter(painter)
+		self.drawCurrentLine(painter)
+		self.drawSelection(painter)
 		self.drawText(painter)
 		self.drawCursor(painter)
-		self.drawSelection(painter)
 
 	def drawBackground(self, painter):
 		painter.fillRect(self.rect(), QColor(BACKGROUND))
@@ -40,15 +43,22 @@ class EditorView(QWidget):
 	def drawText(self, painter):
 		metrics = QFontMetrics(self.font())
 		lineHeight = metrics.height()
+		charWidth = metrics.horizontalAdvance("M")
 		pane = self.editor.pane
 		visibleCount = self.height() // lineHeight + 1
 		visibleLines = pane.buffer.lines[pane.scrollY: pane.scrollY + visibleCount]
 		y = lineHeight
 
-		for lineNumber, text in enumerate(visibleLines):
-			painter.setPen(QColor(TEXT))
-			painter.drawText(self.gutterWidth + 8, y, text)
-			self.drawLineNumber(painter, pane.scrollY + lineNumber, y)
+		for lineNumber, line in enumerate(visibleLines):
+			bufferY = pane.scrollY + lineNumber
+			self.drawLineNumber(painter, bufferY, y)
+			language = pane.buffer.language
+			tokens = self.lexer.tokenize(line, language)
+			x = self.gutterWidth + 8
+			for tokenText, tokenType in tokens:
+				painter.setPen(self.tokenColor(tokenType))
+				painter.drawText(x, y, tokenText)
+				x += len(tokenText) * charWidth
 			y += lineHeight
 
 	def drawLineNumber(self, painter, lineNumber, y):
@@ -66,8 +76,42 @@ class EditorView(QWidget):
 		y = ((pane.cursorY - pane.scrollY + 1) * lineHeight)
 		painter.fillRect(x, y - lineHeight + 2, 2, lineHeight, QColor(TEXT))
 
+	def drawCurrentLine(self, painter):
+		pane = self.editor.pane
+		metrics = QFontMetrics(self.font())
+		lineHeight = metrics.height()
+		visibleY = pane.cursorY - pane.scrollY
+		if visibleY < 0:
+			return
+		y = visibleY * lineHeight
+		painter.fillRect(self.gutterWidth, y, self.width() - self.gutterWidth, lineHeight, QColor("#0040A0"))
+
 	def drawSelection(self, painter):
-		pass
+		pane = self.editor.pane
+		if not pane.selection.active:
+			return
+		metrics = QFontMetrics(self.font())
+		lineHeight = metrics.height()
+		charWidth = metrics.horizontalAdvance("M")
+		visibleCount = self.height() // lineHeight + 1
+		for visibleLine in range(visibleCount):
+			bufferY = pane.scrollY + visibleLine
+			selectionRange = pane.selection.selectedColumns(bufferY)
+			if selectionRange is None:
+				continue
+			startCol, endCol = selectionRange
+			if startCol is None:
+				startCol = 0
+			startX = self.gutterWidth + 8 + (startCol - pane.scrollX * charWidth)
+			if endCol is None:
+				try:
+					lineLength = len(pane.buffer.lines[bufferY])
+				except IndexError:
+					lineLength = startCol
+				endCol = lineLength
+			width = (endCol - startCol) * charWidth
+			y = visibleLine * lineHeight
+			painter.fillRect(startX, y, width, lineHeight, QColor("#3366CC"))
 
 	def keyPressEvent(self, event):
 		inputEvent = translateKey(event)
@@ -89,3 +133,12 @@ class EditorView(QWidget):
 		line = pane.cursorY + 1
 		col = pane.cursorX + 1
 		self.cursorChanged.emit(line, col)
+
+	def tokenColor(self, tokenType):
+		colors = {
+			"keyboard": KEYWORD,
+			"string": STRING,
+			"comment": COMMENT,
+			"text": TEXT,
+		}
+		return QColor(colors.get(tokenType, TEXT))
