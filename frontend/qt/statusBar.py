@@ -1,20 +1,46 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QLabel, QSplitter
+from PyQt6.QtCore import Qt
 
 class StatusBar(QWidget):
-	def __init__(self):
-		super().__init__()
-		layout = QHBoxLayout(self)
+	def __init__(self, parent=None):
+		super().__init__(parent)
+		self.leftLabel = QLabel()
+		self.rightLabel = QLabel()
+		self.leftLabel.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+		self.rightLabel.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 		
-		self.position = QLabel("Ln 1, Col 1")
-		self.encoding = QLabel("UTF-8")
-		self.lineEnding = QLabel("LF")
-		self.language = QLabel("Plain Text")
+		layout = QSplitter()
+		layout.setContentsMargins(0, 0, 0, 0)
+		layout.setHandleWidth(1)
 
-		layout.addWidget(self.position)
+		layout.addWidget(self.leftLabel)
 		layout.addStretch()
-		layout.addWidget(self.encoding)
-		layout.addWidget(self.lineEnding)
-		layout.addWidget(self.language)
+		layout.addWidget(self.rightLabel)
 
-	def setPosition(self, line, column):
-		self.position.setText(f"Ln {line}, Col {column}")
+		self.setLayout(layout)
+		self.setFixedHeight(24)
+		self.setObjectName("statusBar")
+
+	def updateState(self, editor):
+		filename = editor.filename or "UNTITLED"
+		diagosticCount = editor.pane.buffer.diagnostics.count() if hasattr(editor.pane.buffer, "diagnostics") else 0
+		
+		if editor.saving:
+			left = f"SAVE AS: {editor.saveInput}"
+		else:
+			left = (
+				f"{editor.mode} | "
+				f"{filename} | "
+				f"Diag {diagosticCount} | "
+				f"Ln {editor.pane.cursorY + 1} | "
+				f"Col {editor.pane.cursorX + 1} | "
+				f"{editor.pane.buffer.language.name.upper() if editor.pane.buffer.language else "TEXT"}"
+			)
+		right = (
+			"^S Save  "
+			"^O Open  "
+			"^P Commands  "
+			"^N Next"
+		)
+		self.leftLabel.setText(left)
+		self.rightLabel.setText(right)

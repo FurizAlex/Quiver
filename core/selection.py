@@ -33,12 +33,21 @@ class Selection:
 		if start > end:
 			start, end = end, start
 		
-		return start, end
+		return {
+			"sy": start[0],
+			"sx": start[1],
+			"ey": end[0],
+			"ex": end[1]
+		}
 
 	def contains(self, x, y):
 		if not self.active:
 			return False
-		(sx, sy), (ex, ey) = self.normalized()
+		sel = self.normalized()
+		sx = sel["sx"]
+		sy = sel["sy"]
+		ex = sel["ex"]
+		ey = sel["ey"]
 		
 		if y < sy or y > ey:
 			return False
@@ -53,7 +62,11 @@ class Selection:
 	def selectedColumns(self, lineY):
 		if not self.active:
 			return None
-		(sx, sy), (ex, ey) = self.normalized()
+		sel = self.normalized()
+		sx = sel["sx"]
+		sy = sel["sy"]
+		ex = sel["ex"]
+		ey = sel["ey"]
 
 		if lineY < sy or lineY > ey:
 			return None

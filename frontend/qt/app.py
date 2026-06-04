@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from frontend.qt.qtTheme import loadQtTheme
 from frontend.qt.editorQt import EditorQt, EditorSignals
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSplitter
@@ -28,6 +29,10 @@ class MainWindow(QMainWindow):
 		self.views = EditorView(self.editor)
 		self.statusBarWidget = StatusBar()
 
+		self.editor.signals.cursorMoved.connect(lambda: self.statusBarWidget.updateState(self.editor))
+		self.editor.signals.changed.connect(lambda: self.statusBarWidget.updateState(self.editor))
+		self.editor.signals.statusChanged.connect(lambda: self.statusBarWidget.updateState(self.editor))
+
 		splitter = QSplitter()
 		splitter.addWidget(self.explorer)
 		splitter.addWidget(self.views)
@@ -44,10 +49,12 @@ class MainWindow(QMainWindow):
 		self.resize(1280, 720)
 		self.setMinimumSize(1000, 700)
 
-		self.views.cursorChanged.connect(self.statusBarWidget.setPosition)
+		#self.views.cursorChanged.connect(self.statusBarWidget.setPosition)
+		self.statusBarWidget.updateState(self.editor)
 
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
+	app.setStyleSheet(loadQtTheme("quiver"))
 	window = MainWindow()
 	window.show()
 	window.editor.resize(window.width(), window.height())

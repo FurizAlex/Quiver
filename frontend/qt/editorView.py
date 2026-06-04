@@ -47,7 +47,7 @@ class EditorView(QWidget):
 		pane = self.editor.pane
 		visibleCount = self.height() // lineHeight + 1
 		visibleLines = pane.buffer.lines[pane.scrollY: pane.scrollY + visibleCount]
-		y = lineHeight
+		y = 0
 
 		for lineNumber, line in enumerate(visibleLines):
 			bufferY = pane.scrollY + lineNumber
@@ -57,7 +57,7 @@ class EditorView(QWidget):
 			x = self.gutterWidth + 8
 			for tokenText, tokenType in tokens:
 				painter.setPen(self.tokenColor(tokenType))
-				painter.drawText(x, y, tokenText)
+				painter.drawText(x, y + lineHeight - metrics.descent(), tokenText)
 				x += len(tokenText) * charWidth
 			y += lineHeight
 
@@ -73,8 +73,9 @@ class EditorView(QWidget):
 		charWidth = metrics.horizontalAdvance("M")
 		lineHeight = metrics.height()
 		x = self.gutterWidth + 8 + ((pane.cursorX - pane.scrollX) * charWidth)
-		y = ((pane.cursorY - pane.scrollY + 1) * lineHeight)
-		painter.fillRect(x, y - lineHeight + 2, 2, lineHeight, QColor(TEXT))
+		visibleY = pane.cursorY - pane.scrollY
+		y = visibleY * lineHeight
+		painter.fillRect(x, y, 2, lineHeight, QColor(TEXT))
 
 	def drawCurrentLine(self, painter):
 		pane = self.editor.pane
@@ -88,7 +89,8 @@ class EditorView(QWidget):
 
 	def drawSelection(self, painter):
 		pane = self.editor.pane
-		if not pane.selection.active:
+		selection = self.editor.selection
+		if not selection.active:
 			return
 		metrics = QFontMetrics(self.font())
 		lineHeight = metrics.height()
@@ -96,13 +98,13 @@ class EditorView(QWidget):
 		visibleCount = self.height() // lineHeight + 1
 		for visibleLine in range(visibleCount):
 			bufferY = pane.scrollY + visibleLine
-			selectionRange = pane.selection.selectedColumns(bufferY)
+			selectionRange = selection.selectedColumns(bufferY)
 			if selectionRange is None:
 				continue
 			startCol, endCol = selectionRange
 			if startCol is None:
 				startCol = 0
-			startX = self.gutterWidth + 8 + (startCol - pane.scrollX * charWidth)
+			startX = self.gutterWidth + 8 + (startCol - pane.scrollX) * charWidth
 			if endCol is None:
 				try:
 					lineLength = len(pane.buffer.lines[bufferY])

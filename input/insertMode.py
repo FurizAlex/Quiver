@@ -34,7 +34,11 @@ def deleteSelection(editor):
 		return
 
 	buffer = editor.pane.buffer
-	sx, sy, ex, ey = selection.normalized()
+	sel = selection.normalized()
+	sx = sel["sx"]
+	sy = sel["sy"]
+	ex = sel["ex"]
+	ey = sel["ey"]
 
 	if sy == ey:
 		line = buffer.lines[sy]
@@ -47,8 +51,8 @@ def deleteSelection(editor):
 		buffer.lines[sy:ey + 1] = [
 			first + last
 		]
-	editor.pane.pane.cursorX = sx
-	editor.pane.pane.cursorY = sy
+	editor.pane.cursorX = sx
+	editor.pane.cursorY = sy
 	selection.clear()
 
 def insertText(editor, text):
@@ -100,14 +104,22 @@ def handle(editor, event):
 		return
 	if key == "HOME":
 		if selection.active:
-			sx, sy, ex, ey = selection.normalized()
+			sel = selection.normalized()
+			sx = sel["sx"]
+			sy = sel["sy"]
+			ex = sel["ex"]
+			ey = sel["ey"]
 
 			text = buffer.getSelection(sx, sy, ex, ey)
 			clipboard.copy(text)
 		editor.notifyChanged()
 	elif key == "END":
 		if selection.active:
-			sx, sy, ex, ey = selection.normalized()
+			sel = selection.normalized()
+			sx = sel["sx"]
+			sy = sel["sy"]
+			ex = sel["ex"]
+			ey = sel["ey"]
 
 			text = buffer.getSelection(sx, sy, ex, ey)
 			clipboard.copy(text)
