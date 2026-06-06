@@ -18,6 +18,16 @@ class Layout:
 		startX += paneIndex * self.paneWidth()
 
 		return startX
+	
+	def recalculate(self):
+		if not self.panes:
+			return
+		width = self.viewport.width()
+		paneWidth = width // len(self.panes)
+		x = 0
+		for pane in self.panes:
+			pane.setGeometry(x, 0, paneWidth, self.viewport.height())
+			x += paneWidth
 
 	def textStartX(self, paneIndex):
 		return (

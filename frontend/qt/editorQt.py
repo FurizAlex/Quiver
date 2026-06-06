@@ -13,6 +13,7 @@ class EditorSignals(QObject):
 	changed = pyqtSignal()
 	cursorMoved = pyqtSignal()
 	statusChanged = pyqtSignal()
+	panesChanged = pyqtSignal()
 	def __init__(self):
 		super().__init__()
 
@@ -29,3 +30,6 @@ class EditorQt(Editor):
 
 	def notifyStatusChanged(self):
 		self.signals.statusChanged.emit()
+
+	def notifyPanesChanged(self):
+		self.signals.panesChanged.emit()

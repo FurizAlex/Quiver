@@ -12,6 +12,7 @@ from frontend.qt.statusBar import StatusBar
 from frontend.qt.editorView import EditorView
 from frontend.qt.tabBar import TabBar
 from frontend.qt.explorer import Explorer
+from frontend.qt.paneContainer import PaneContainer
 
 class MainWindow(QMainWindow):
 	def __init__(self):

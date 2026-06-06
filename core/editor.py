@@ -205,7 +205,7 @@ class Editor:
 
 	@property
 	def pane(self):
-		return self.panes[self.activePaneIndex]
+		return self.panes[self.activePane]
 
 	@property
 	def buffers(self):
@@ -226,4 +226,7 @@ class Editor:
 		pass
 
 	def notifyStatusChanged(self):
+		pass
+
+	def notifyPanesChanged(self):
 		pass

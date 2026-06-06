@@ -26,6 +26,13 @@ class Pane:
 			self.cursorY + 1
 		)
 
+	def splitVertical(self):
+		if self.parent is None:
+			return None
+		newPane = Pane(document=self.documents, parent=self.parent)
+		self.parent.addPane(newPane)
+		return newPane
+
 	@property
 	def x(self):
 		return self.cursorX
