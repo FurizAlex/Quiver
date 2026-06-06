@@ -6,8 +6,8 @@ QWidget {
 	background: black;
 	color: white;
 
-	font-family: "Cascadia Mono";
-	font-size: 18px;
+	font-family: "Terminus";
+	font-size: 16px;
 	font-weight: bold;
 }
 
@@ -24,11 +24,9 @@ QTreeWidget::item:selected {
 }
 
 QPlainTextEdit {
-	background: #0055aa;
+	background: black;
 	color: white;
 	border: none;
-	selection-background-color: white;
-	selection-color: #0055aa;
 }
 
 QSplitter::handle {
@@ -52,4 +50,19 @@ QTabBar::tab {
 QTabBar::tab:selected {
 	background: #0000ff;
 	color: white;
+}
+
+QWidget#statusBar {
+	background: #0000AA;
+	color: white;
+	border-top: 2px solid white;
+	font-weight: bold;
+	font-size: 14px;
+}
+
+QWidget#statusBar QLabel {
+	background: transparent;
+	color: white;
+	padding-left: 4px;
+	padding-right: 4px;
 }

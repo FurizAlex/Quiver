@@ -22,12 +22,22 @@ def translateKey(event):
 
 		Qt.Key.Key_Escape: "ESC"
 	}
-	key = keymap.get(event.key(), text)
+	ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
+	shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+	alt = bool(event.modifiers() & Qt.KeyboardModifier.AltModifier)
+
+	if event.key() in keymap:
+		key = keymap[event.key()]
+	elif ctrl and Qt.Key.Key_A <= event.key() <= Qt.Key.Key_Z:
+		key = chr(event.key())
+	else:
+		key = event.text()
+
 	return InputEvent(
 		key=key,
-		ctrl=bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier),
-		shift=bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
-		alt=bool(event.modifiers() & Qt.KeyboardModifier.AltModifier)
+		ctrl=ctrl,
+		shift=shift,
+		alt=alt
 	)
 
 def translateMouse(event):

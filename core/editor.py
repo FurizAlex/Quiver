@@ -77,6 +77,7 @@ class Editor:
 
 		self.panes = [Pane(self.documents.active)]
 		self.activePane = 0
+		self.activePaneIndex = 0
 
 		self.showExplorer = self.settings.get("show_explorer")
 		self.explorerWidth = 30
@@ -160,6 +161,8 @@ class Editor:
 
 		if handler:
 			handler(self, event)
+		self.notifyStatusChanged()
+		self.notifyCursorMoved()
 
 	def updateScroll(self):
 		pane = self.pane
@@ -202,8 +205,7 @@ class Editor:
 
 	@property
 	def pane(self):
-		return self.panes[self.activePane]
-
+		return self.panes[self.activePaneIndex]
 
 	@property
 	def buffers(self):

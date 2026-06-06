@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QSplitter
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout
 from PyQt6.QtCore import Qt
 
 class StatusBar(QWidget):
@@ -7,11 +7,11 @@ class StatusBar(QWidget):
 		self.leftLabel = QLabel()
 		self.rightLabel = QLabel()
 		self.leftLabel.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-		self.rightLabel.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+		self.rightLabel.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 		
-		layout = QSplitter()
-		layout.setContentsMargins(0, 0, 0, 0)
-		layout.setHandleWidth(1)
+		layout = QHBoxLayout()
+		layout.setContentsMargins(6, 0, 6, 0)
+		layout.setSpacing(0)
 
 		layout.addWidget(self.leftLabel)
 		layout.addStretch()
@@ -22,9 +22,8 @@ class StatusBar(QWidget):
 		self.setObjectName("statusBar")
 
 	def updateState(self, editor):
-		filename = editor.filename or "UNTITLED"
+		filename = editor.filename or "[NO FILE]"
 		diagosticCount = editor.pane.buffer.diagnostics.count() if hasattr(editor.pane.buffer, "diagnostics") else 0
-		
 		if editor.saving:
 			left = f"SAVE AS: {editor.saveInput}"
 		else:
@@ -34,7 +33,8 @@ class StatusBar(QWidget):
 				f"Diag {diagosticCount} | "
 				f"Ln {editor.pane.cursorY + 1} | "
 				f"Col {editor.pane.cursorX + 1} | "
-				f"{editor.pane.buffer.language.name.upper() if editor.pane.buffer.language else "TEXT"}"
+				f"{editor.pane.buffer.language.name.upper() if editor.pane.buffer.language else "TEXT"} | "
+				f"{editor.status} |"
 			)
 		right = (
 			"^S Save  "

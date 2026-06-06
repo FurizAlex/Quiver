@@ -1,9 +1,6 @@
 import curses
 
 from input.keys import *
-from input.shortcuts import handleShortcut
-from input.keymap import KEYMAP
-
 from core.navigation import *
 
 from commands.fileCommands import save
@@ -75,60 +72,54 @@ def handle(editor, event):
 	selection = editor.selection
 	clipboard = editor.clipboard
 	key = event.key
-	command = KEYMAP.get(key)
 
-	if command:
-		editor.commands.execute(command, editor)
-		return
-	elif event.ctrl and key == "O":
-		from input.paletteMode import openFilePalette
-
-		openFilePalette(editor)
+	if event.ctrl:
+		match key.upper():
+			case "S":
+				save(editor)
+			case "Z":
+				undo(editor)
+			case "Y":
+				redo(editor)
+			case "N":
+				nextBuffer(editor)
+			case "B":
+				previousBuffer(editor)
+			case "O":
+				from input.paletteMode import openFilePalette
+				openFilePalette(editor)
+				editor.notifyChanged()
+			case "P":
+				from input.paletteMode import openCommandPalette
+				openCommandPalette(editor)
+				editor.notifyChanged()
+			case "G":
+				editor.gotoMode = True
+				editor.gotoInput = ""
+			case "F":
+				editor.searchMode = True
+				editor.searchInput = ""
+			case "C":
+				if selection.active:
+					sel = selection.normalized()
+					text = buffer.getSelection(sel["sx"], sel["sy"], sel["ex"], sel["ey"])
+					clipboard.copy(text)
+			case "V":
+				text = clipboard.paste()
+				if text:
+					insertText(editor, text)
+			case "X":
+				if selection.active:
+					sel = selection.normalized()
+					text = buffer.getSelection(sel["sx"], sel["sy"], sel["ex"], sel["ey"])
+					clipboard.copy(text)
+					deleteSelection(editor)
+			case "W":
+				editor.commands.execute("close_file", editor)
+			case _:
+				pass
 		editor.notifyChanged()
 		return
-	elif event.ctrl and key == "P":
-		from input.paletteMode import openCommandPalette
-
-		openCommandPalette(editor)
-		editor.notifyChanged()
-		return
-	elif event.ctrl and key == "G":
-		editor.gotoMode = True
-		editor.gotoInput = ""
-		editor.notifyChanged()
-		return
-	elif event.ctrl and key == "F":
-		editor.searchMode = True
-		editor.searchInput = ""
-		editor.notifyChanged()
-		return
-	if key == "HOME":
-		if selection.active:
-			sel = selection.normalized()
-			sx = sel["sx"]
-			sy = sel["sy"]
-			ex = sel["ex"]
-			ey = sel["ey"]
-
-			text = buffer.getSelection(sx, sy, ex, ey)
-			clipboard.copy(text)
-		editor.notifyChanged()
-	elif key == "END":
-		if selection.active:
-			sel = selection.normalized()
-			sx = sel["sx"]
-			sy = sel["sy"]
-			ex = sel["ex"]
-			ey = sel["ey"]
-
-			text = buffer.getSelection(sx, sy, ex, ey)
-			clipboard.copy(text)
-			deleteSelection(editor)
-		editor.notifyChanged()
-	elif key == "":
-		text = clipboard.paste()
-		if text:
-			insertText(editor, text)
 	elif key == "TAB":
 		insertText(editor, "\t")
 	elif key == "ENTER":

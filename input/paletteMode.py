@@ -64,6 +64,7 @@ def handle(editor, event):
 	elif len(key) == 1 and not event.ctrl and not event.alt:
 		editor.paletteInput += key
 	editor.paletteSelection = min(editor.paletteSelection, max(0, len(items) - 1))
+	editor.notifyChanged()
 
 def openCommandPalette(editor):
 	editor.paletteOpen = True

@@ -5,21 +5,26 @@ def performSearch(editor):
 		index = line.find(editor.searchInput)
 
 		if index != -1:
-			editor.pane.cursor.cursorY = y
-			editor.pane.cursor.cursorX = index
+			editor.pane.cursorY = y
+			editor.pane.cursorX = index
+
+			editor.notifyCursorMoved()
+			editor.notifyChanged()
 			return
 	editor.status = f"Not found: {editor.searchInput}"
 	editor.statusTimer = 120
 
-def handle(editor, key):
-	if key == 27:
+def handle(editor, event):
+	key = event.key
+
+	if key == "ESC":
 		editor.searchMode = False
 		return
-	elif key in (10, 13):
+	elif key == "ENTER":
 		performSearch(editor)
 		editor.searchMode = False
 		return
-	elif key in (8, 127, curses.KEY_BACKSPACE):
+	elif key == "BACKSPACE":
 		editor.searchInput = editor.searchInput[:-1]
-	elif 32 <= key <= 126:
-		editor.searchInput += chr(key)
+	elif len(key) == 1 and not event.ctrl:
+		editor.searchInput += key

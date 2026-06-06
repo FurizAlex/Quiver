@@ -22,7 +22,7 @@ def openFileBuffer(editor, filename):
 			editor.pane.buffer = editor.buffers[i]
 			editor.status = (f"Switched to {filename}")
 			return
-	newBuffer = Buffer()
+	newBuffer = Buffer(editor, filename)
 	newBuffer.language = editor.languageRegistry.detect(filename)
 	newBuffer.lines = openFile(filename)
 	newBuffer.filename = filename
