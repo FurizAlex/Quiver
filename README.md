@@ -6,5 +6,4 @@ Quiver is largely inspired by the [MS-Dos Editor](https://en.wikipedia.org/wiki/
 
 More will posted here, later!
 
-
 <img width="2000" height="1000" alt="QuiverHeader" src="https://github.com/user-attachments/assets/1ed30eeb-f47a-4019-9337-af353dc89a74" />
