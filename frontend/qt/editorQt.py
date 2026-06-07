@@ -33,3 +33,7 @@ class EditorQt(Editor):
 
 	def notifyPanesChanged(self):
 		self.signals.panesChanged.emit()
+
+	@property
+	def pane(self):
+		return self.panes[self.activePane]

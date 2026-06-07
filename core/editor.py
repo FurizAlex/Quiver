@@ -77,7 +77,6 @@ class Editor:
 
 		self.panes = [Pane(self.documents.active)]
 		self.activePane = 0
-		self.activePaneIndex = 0
 
 		self.showExplorer = self.settings.get("show_explorer")
 		self.explorerWidth = 30

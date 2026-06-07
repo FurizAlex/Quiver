@@ -4,6 +4,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from PyQt6.QtCore import Qt
+
 from frontend.qt.qtTheme import loadQtTheme
 from frontend.qt.editorQt import EditorQt, EditorSignals
 
@@ -12,7 +14,6 @@ from frontend.qt.statusBar import StatusBar
 from frontend.qt.editorView import EditorView
 from frontend.qt.tabBar import TabBar
 from frontend.qt.explorer import Explorer
-from frontend.qt.paneContainer import PaneContainer
 
 class MainWindow(QMainWindow):
 	def __init__(self):
@@ -30,11 +31,11 @@ class MainWindow(QMainWindow):
 		self.views = EditorView(self.editor)
 		self.statusBarWidget = StatusBar()
 
-		self.editor.signals.cursorMoved.connect(lambda: self.statusBarWidget.updateState(self.editor))
-		self.editor.signals.changed.connect(lambda: self.statusBarWidget.updateState(self.editor))
-		self.editor.signals.statusChanged.connect(lambda: self.statusBarWidget.updateState(self.editor))
+		self.editor.signals.cursorMoved.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
+		self.editor.signals.changed.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
+		self.editor.signals.statusChanged.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
 
-		splitter = QSplitter()
+		splitter = QSplitter(Qt.Orientation.Horizontal)
 		splitter.addWidget(self.explorer)
 		splitter.addWidget(self.views)
 		splitter.setStretchFactor(1, 1)
