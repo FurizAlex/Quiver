@@ -1,68 +1,133 @@
-QMainWindow {
-	background: black;
+/* ── Base ── */
+QMainWindow, QWidget {
+    background: black;
+    color: white;
+    font-family: "Perfect DOS VGA 437", "Terminus", "Courier New", monospace;
+    font-size: 16px;
+    font-weight: bold;
 }
 
-QWidget {
-	background: black;
-	color: white;
-
-	font-family: "Terminus";
-	font-size: 16px;
-	font-weight: bold;
-}
-
-QTreeWidget {
-	background: #0000aa;
-	color: white;
-	border: none;
-	outline: none;
-}
-
-QTreeWidget::item:selected {
-	background: #0000aa;
-	color: white;
-}
-
-QPlainTextEdit {
-	background: black;
-	color: white;
-	border: none;
-}
-
-QSplitter::handle {
-	background: white;
-	width: 1px;
-}
-
-QWidget#statusBar {
-	background: #0000aa;
-	color: white;
-	border: none;
+/* ── Tab bar ── */
+QTabBar {
+    background: #0000AA;
+    border-bottom: 1px solid white;
 }
 
 QTabBar::tab {
-	background: #0000aa;
-	color: white;
-	padding: 2px 12px;
-	border: none;
+    background: #0000AA;
+    color: white;
+    padding: 3px 14px;
+    border: none;
+    border-right: 1px solid #0000CC;
+    min-width: 80px;
 }
 
 QTabBar::tab:selected {
-	background: #0000ff;
-	color: white;
+    background: #0000FF;
+    color: white;
+    border-bottom: 2px solid white;
 }
 
+QTabBar::tab:hover:!selected {
+    background: #0000CC;
+}
+
+/* ── Title bar (centred filename) ── */
+QWidget#titleBar {
+    background: #0000AA;
+    border-bottom: 1px solid white;
+}
+
+QLabel#titleBarLabel {
+    background: transparent;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* ── Explorer ── */
+QListWidget#explorer {
+    background: #0000AA;
+    color: white;
+    border: none;
+    border-right: 1px solid white;
+    outline: none;
+    font-size: 15px;
+}
+
+QListWidget#explorer::item {
+    padding: 1px 6px;
+    border: none;
+}
+
+QListWidget#explorer::item:selected {
+    background: white;
+    color: #0000AA;
+}
+
+QListWidget#explorer::item:hover:!selected {
+    background: #0000CC;
+}
+
+/* ── Splitter handle between panes ── */
+QSplitter::handle {
+    background: white;
+    width: 1px;
+    height: 1px;
+}
+
+/* ── Status bar ── */
 QWidget#statusBar {
-	background: #0000AA;
-	color: white;
-	border-top: 2px solid white;
-	font-weight: bold;
-	font-size: 14px;
+    background: #0000AA;
+    color: white;
+    border-top: 1px solid white;
+    font-size: 14px;
+    font-weight: bold;
+    min-height: 24px;
+    max-height: 24px;
 }
 
 QWidget#statusBar QLabel {
-	background: transparent;
-	color: white;
-	padding-left: 4px;
-	padding-right: 4px;
+    background: transparent;
+    color: white;
+    padding: 0 4px;
+}
+
+/* ── Scrollbars ── minimal, dark ── */
+QScrollBar:vertical {
+    background: #111;
+    width: 8px;
+    border: none;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #444;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+    border: none;
+}
+
+QScrollBar:horizontal {
+    background: #111;
+    height: 8px;
+    border: none;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background: #444;
+    min-width: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+    border: none;
 }

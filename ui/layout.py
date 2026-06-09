@@ -23,10 +23,10 @@ class Layout:
 		if not self.panes:
 			return
 		width = self.viewport.width()
-		paneWidth = width // len(self.panes)
+		paneWidth = width // len(self.editor.panes)
 		x = 0
 		for pane in self.panes:
-			pane.setGeometry(x, 0, paneWidth, self.viewport.height())
+			pane.setGeometry(x, 0, paneWidth, self.editor.viewport.height())
 			x += paneWidth
 
 	def textStartX(self, paneIndex):

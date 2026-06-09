@@ -3,9 +3,9 @@ def screenToBuffer(editor, paneIndex, screenX, screenY):
 	pane = editor.panes[paneIndex]
 
 	startX = layout.textStartX(paneIndex)
-	bufferY = pane.scrollY + screenY - 1
+	bufferY = max(0, pane.scrollY + screenY - 1)
 
-	line = editor.pane.buffer.lines[min(bufferY, len(editor.pane.buffer.lines) - 1)]
+	line = pane.buffer.lines[min(bufferY, len(pane.buffer.lines) - 1)]
 	relativeX = screenX - startX
 	bufferX = 0
 	visualX = 0
@@ -26,7 +26,7 @@ def bufferToScreen(editor, paneIndex, bufferX, bufferY):
 	layout = editor.layout
 	pane = editor.panes[paneIndex]
 
-	lines = editor.pane.buffer.lines
+	lines = pane.buffer.lines
 	if not lines:
 		return (0, 1)
 

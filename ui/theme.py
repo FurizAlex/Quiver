@@ -44,7 +44,7 @@ class Theme:
 		themes = []
 
 		for file in os.listdir("themes"):
-			if file.endswith(".py") and not file.startswith("___"):
+			if file.endswith(".py") and not file.startswith("__"):
 				moduleName = file[:-3]
 
 				try:

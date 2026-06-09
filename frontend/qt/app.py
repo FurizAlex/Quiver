@@ -1,3 +1,4 @@
+#app.py
 import sys
 from pathlib import Path
 
@@ -13,46 +14,57 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSp
 from frontend.qt.statusBar import StatusBar
 from frontend.qt.editorView import EditorView
 from frontend.qt.tabBar import TabBar
+from frontend.qt.titleBar import TitleBar
 from frontend.qt.explorer import Explorer
 
 class MainWindow(QMainWindow):
 	def __init__(self):
 		super().__init__()
 		self.editor = EditorQt()
-		self.signals = EditorSignals()
+
 		central = QWidget()
-		layout = QVBoxLayout()
+		layout = QVBoxLayout(central)
+		layout.setContentsMargins(0, 0, 0, 0)
+		layout.setSpacing(0)
+
+		self.tabs = TabBar(self.editor)
+		self.tabs.rebuild()
+		
+		self.titleBar = TitleBar(self.editor)
 
 		self.explorer = Explorer(self.editor)
 		self.explorer.rebuild()
 
-		self.tabs = TabBar(self.editor)
-		self.tabs.rebuild()
 		self.views = EditorView(self.editor)
-		self.statusBarWidget = StatusBar()
-
-		self.editor.signals.cursorMoved.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
-		self.editor.signals.changed.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
-		self.editor.signals.statusChanged.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
 
 		splitter = QSplitter(Qt.Orientation.Horizontal)
+		splitter.setHandleWidth(1)
 		splitter.addWidget(self.explorer)
 		splitter.addWidget(self.views)
 		splitter.setStretchFactor(1, 1)
+		splitter.setSizes([220, 9999])
 
+		self.statusBarWidget = StatusBar()
+
+		for sig in (
+			self.editor.signals.cursorMoved,
+			self.editor.signals.changed,
+			self.editor.signals.statusChanged
+		):
+			sig.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
+		
 		layout.addWidget(self.tabs)
-		layout.addWidget(splitter)
+		layout.addWidget(self.titleBar)
+		layout.addWidget(splitter, stretch=1)
 		layout.addWidget(self.statusBarWidget)
 
-		central.setLayout(layout)
 		self.setCentralWidget(central)
-
 		self.setWindowTitle("Quiver")
 		self.resize(1280, 720)
 		self.setMinimumSize(1000, 700)
 
-		#self.views.cursorChanged.connect(self.statusBarWidget.setPosition)
 		self.statusBarWidget.updateState(self.editor)
+		self.views.setFocus()
 
 if __name__ == "__main__":
 	app = QApplication(sys.argv)

@@ -22,6 +22,16 @@ THEME = {
 		"bg": "white"
 	},
 
+	"paletteItem": {
+	"fg": "white",
+	"bg": "blue"
+	},
+
+	"paletteSelection": {
+		"fg": "white",
+		"bg": "black",
+	},
+
 	"keyword": {
 		"fg": "yellow",
 		"bold": True

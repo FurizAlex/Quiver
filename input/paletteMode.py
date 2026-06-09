@@ -49,6 +49,7 @@ def handle(editor, event):
 
 	if key == "ESC":
 		editor.paletteOpen = False
+		editor.notifyChanged()
 		return
 	elif key == "ENTER":
 		execute(editor)
@@ -78,6 +79,7 @@ def openCommandPalette(editor):
 			"name": command.title,
 			"command": command.name
 		})
+	editor.notifyChanged()
 
 def openFilePalette(editor):
 	editor.paletteOpen = True

@@ -113,21 +113,27 @@ class Renderer(RendererBase):
 		tokens = self.lexer.tokenize(line, buffer.language)
 		x = startX
 		bufferX = 0
+		visualX = 0
 
 		for tokenText, tokenType in tokens:
 			for ch in tokenText:
 				if bufferX < pane.scrollX:
 					bufferX += 1
 					continue
-				if x >= startX + paneWidth:
-					return
+
 				attr = editor.theme.get(tokenType)
 				if editor.selection.contains(bufferX, bufferY):
 					attr = editor.theme.get("selection")
 
-				self.safeAddstr(screenY + 1, x, ch, attr)
-				x += 1
-				bufferX += 1
+				if ch == "\t":
+					spaces = editor.settings.tabSize - (visualX % editor.settings.tabSize)
+					self.safeAddstr(screenY + 1, startX + visualX, " " * spaces, attr)
+					visualX += spaces
+					bufferX += 1
+				else:
+					self.safeAddstr(screenY + 1, startX + visualX, ch, attr)
+					visualX += 1
+					bufferX += 1
 		while x < startX + paneWidth:
 			if editor.selection.contains(bufferX, bufferY):
 				self.safeAddstr(screenY, x, " ", editor.theme.get("selection"))

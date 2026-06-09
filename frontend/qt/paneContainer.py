@@ -13,15 +13,17 @@ class PaneContainer(QWidget):
 
 		self.editor = editor
 		self.font = font
-		self.layout = QHBoxLayout()
-		self.layout.setContentsMargins(0, 0, 0, 0)
 
 		self.paneViews = []
 
+		layout = QHBoxLayout()
+		layout.setContentsMargins(0, 0, 0, 0)
+		layout.setSpacing(0)
+
 		self.splitter = QSplitter(Qt.Orientation.Horizontal)
 
-		self.layout.addWidget(self.splitter)
-		self.setLayout(self.layout)
+		layout.addWidget(self.splitter)
+		self.setLayout(layout)
 
 		editor.signals.panesChanged.connect(self.rebuildPanes)
 		self.rebuildPanes()
@@ -31,31 +33,22 @@ class PaneContainer(QWidget):
 			widget = self.splitter.widget(0)
 			self.splitter.removeWidget(widget)
 			widget.deleteLater()
-
-		from frontend.qt.editorView import PaneView
-		for pane in self.editor.panes:
-			view = PaneView(self.editor, pane, self.font)
-			self.splitter.addWidget(view)
-
-	def rebuildPanes(self):
-		while self.splitter.count():
-			widget = self.splitter.widget(0)
-
-			self.splitter.removeWidget(widget)
-			widget.deleteLater()
 		self.paneViews.clear()
 
 		from frontend.qt.editorView import PaneView
-		for pane in self.editor.panes:
-			view = PaneView(self.editor, pane, self.font)
+		for i, pane in enumerate(self.editor.panes):
+			view = PaneView(self.editor, pane, self.font, paneIndex=i)
 			self.splitter.addWidget(view)
 			self.paneViews.append(view)
 
-	def focusNextPane(self):
-		if not self.panes:
-			return
-		current = self.activePane
-		index = self.panes.index(current)
-		nextIndex = (index + 1) % len(self.panes)
+		index = self.editor.activePane
+		if 0 <= index < len(self.paneViews):
+			self.paneViews[index].setFocus()
 
-		self.setActivePane(self.panes[nextIndex])
+	def focusNextPane(self):
+		if not self.panesViews:
+			return
+		index = (self.editor.activePane + 1) % len(self.paneViews)
+		self.editor.activePane = index
+		self.paneViews[index].setFocus()
+		self.editor.notifyChanged()

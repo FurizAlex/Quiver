@@ -34,6 +34,11 @@ class EditorQt(Editor):
 	def notifyPanesChanged(self):
 		self.signals.panesChanged.emit()
 
+	def handleInput(self, event):
+		super().handleInput(event)
+		if self.status.startswith("KEY="):
+			self.status = ""
+
 	@property
 	def pane(self):
 		return self.panes[self.activePane]

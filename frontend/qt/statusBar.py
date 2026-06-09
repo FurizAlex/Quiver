@@ -22,20 +22,26 @@ class StatusBar(QWidget):
 		self.setObjectName("statusBar")
 
 	def updateState(self, editor):
-		filename = editor.filename or "[NO FILE]"
-		diagosticCount = editor.pane.buffer.diagnostics.count() if hasattr(editor.pane.buffer, "diagnostics") else 0
+		buffer = editor.pane.buffer
+		filename = buffer.filename or "[NO FILE]"
+		diagosticCount = buffer.diagnostics.count() if hasattr(buffer, "diagnostics") else 0
+		status = editor.status
+		if status.startswith("KEY="):
+			status = ""
 		if editor.saving:
-			left = f"SAVE AS: {editor.saveInput}"
+			left = f"SAVE AS: {editor.saveInput}_"
 		else:
+			languageName = buffer.language.name.upper() if buffer.language else "TEXT"
 			left = (
 				f"{editor.mode} | "
 				f"{filename} | "
 				f"Diag {diagosticCount} | "
 				f"Ln {editor.pane.cursorY + 1} | "
 				f"Col {editor.pane.cursorX + 1} | "
-				f"{editor.pane.buffer.language.name.upper() if editor.pane.buffer.language else "TEXT"} | "
-				f"{editor.status} |"
+				f"{languageName} | "
 			)
+			if status:
+				left += f"  |  {status}"
 		right = (
 			"^S Save  "
 			"^O Open  "
