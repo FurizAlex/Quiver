@@ -6,34 +6,28 @@ from PyQt6.QtWidgets import QTextEdit
 from frontend.qt.paneContainer import PaneContainer
 from frontend.qt.overlay import OverlayWidget
 from frontend.qt.amigaPalette import *
-from frontend.qt.qtTranslator import translateKey, translateMouse
+from frontend.qt.qtTranslator import translateKey
 from syntax.lexer import Lexer
 
 class EditorView(QWidget):
 	cursorChanged = pyqtSignal(int, int)
-	def __init__(self, editor):
+	def __init__(self, editor, font: QFont):
 		super().__init__()
 		self.editor = editor
-		self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-		fontID = QFontDatabase.addApplicationFont("assets/fonts/Perfect DOS VGA 437.ttf")
-		if fontID != -1:
-			family = QFontDatabase.applicationFontFamilies(fontID)[0]
-		else:
-			family = "Courier New"
-		font = QFont(family)
-		font.setPixelSize(16)
-		font.setBold(True)
-		font.setStyleHint(QFont.StyleHint.TypeWriter)
+		self.editorFont = font
 		self.setFont(font)
+		self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-		self.paneContainer = PaneContainer(editor, font)
+		self.setFont(self.editorFont)
+
+		self.paneContainer = PaneContainer(editor, self.editorFont)
 
 		layout = QVBoxLayout(self)
 		layout.setContentsMargins(0, 0, 0, 0)
 		layout.setSpacing(0)
 		layout.addWidget(self.paneContainer)
 
-		self.overlay = OverlayWidget(editor, font, parent=self)
+		self.overlay = OverlayWidget(editor, self.editorFont, parent=self)
 		self.overlay.resize(self.size())
 		self.overlay.raise_()
 
@@ -43,12 +37,14 @@ class EditorView(QWidget):
 		pass
 
 	def resizeEvent(self, event):
-		self.editor.resize(self.width(), self.height())
 		super().resizeEvent(event)
+		self.overlay.resize(self.size())
+		self.overlay.raise_()
+		self.editor.resize(self.width(), self.height())
 
 class PaneView(QWidget):
 	cursorChanged = pyqtSignal(int, int)
-	def __init__(self, editor, pane, font, paneIndex=0):
+	def __init__(self, editor, pane, font: QFont, paneIndex=0):
 		super().__init__()
 
 		self.editor = editor
@@ -56,47 +52,59 @@ class PaneView(QWidget):
 		self.font = font
 
 		self.paneIndex = paneIndex
-		self.gutterWidth = 52
 		self.lexer = Lexer()
 
 		self.setFont(font)
+
+		metrics = QFontMetrics(font)
+		self.gutterWidth = metrics.horizontalAdvance("0000") + 40
 		self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 		editor.signals.changed.connect(self.update)
 
 	def paintEvent(self, event):
 		painter = QPainter(self)
+		painter.setFont(self.font)
 		self.drawBackground(painter)
-		self.drawGutter(painter)
 		self.drawCurrentLine(painter)
 		self.drawSelection(painter)
 		self.drawText(painter)
+		self.drawGutter(painter)
 		self.drawCursor(painter)
 
 	def drawBackground(self, painter):
 		painter.fillRect(self.rect(), QColor(BACKGROUND))
 
 	def drawGutter(self, painter):
-		painter.fillRect(0, 0, self.gutterWidth, self.height(), QColor(GUTTER))
-		painter.setPen(QColor(GUTTER_SEP))
-		painter.drawLine(self.gutterWidth, 0, self.gutterWidth, self.height())
+		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
+		lineHeight = metrics.height()
 		pane = self.pane
-		visibleCount = self.height() // metrics.height() + 1
+
+		painter.fillRect(0, 0, self.gutterWidth, self.height(), QColor(GUTTER))
+
+		visibleCount = self.height() // lineHeight + 1
 		for i in range(visibleCount):
 			bufferY = pane.scrollY + i
 			if bufferY >= len(pane.buffer.lines):
 				break
-			self.drawLineNumber(painter, bufferY, i * metrics.height())
+			isCurrent = (bufferY == pane.cursorY)
+			painter.setPen(QColor("#FFFFFF") if isCurrent else QColor(COMMENT))
+			text = str(bufferY + 1)
+			textWidth = metrics.horizontalAdvance(text)
+			x = self.gutterWidth - textWidth - 10
+			y = i * lineHeight + metrics.ascent()
+			painter.drawText(x, y, text)
 
 	def drawText(self, painter):
+		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
+		charWidth = metrics.horizontalAdvance("M")
 		pane = self.pane
 		visibleCount = self.height() // lineHeight + 1
-		visibleLines = pane.buffer.lines[pane.scrollY: pane.scrollY + visibleCount]
+		lines = pane.buffer.lines[pane.scrollY: pane.scrollY + visibleCount]
 
-		for lineIndex, line in enumerate(visibleLines):
-			bufferY = pane.scrollY + lineIndex
+		for lineIndex, line in enumerate(lines):
 			tokens = self.lexer.tokenize(line, pane.buffer.language)
 			x = self.gutterWidth + 8
 			bufferX = 0
@@ -107,24 +115,23 @@ class PaneView(QWidget):
 						continue
 					if ch == "\t":
 						tabStop = self.editor.settings.tabSize
-						col = (x - self.gutterWidth - 8) // metrics.horizontalAdvance(" ")
+						col = (x - self.gutterWidth - 8) // charWidth
 						spaces = tabStop - (col % tabStop)
-						x += metrics.horizontalAdvance(" ") * spaces
+						x += charWidth * spaces
 						bufferX += 1
 					else:
 						painter.setPen(self.tokenColor(tokenType))
 						painter.drawText(x, lineIndex * lineHeight + metrics.ascent(), ch)
-						x += metrics.horizontalAdvance(ch)
+						x += charWidth
 						bufferX += 1
 
 	def drawLineNumber(self, painter, lineNumber, y):
+		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
-		if lineNumber == self.pane.cursorY:
-			painter.setPen(QColor("#FFFFFF"))
-		else:
-			painter.setPen(QColor(COMMENT))
+		isCurrentLine = (lineNumber == self.pane.cursorY)
+		painter.setPen(QColor("#FFFFFF") if isCurrentLine else QColor(COMMENT))
 		text = str(lineNumber + 1).rjust(4)
-		painter.drawText(4, y + metrics.ascent(), text)
+		painter.drawText(self.gutterWidth - metrics.horizontalAdvance("9999") - 4, y + metrics.ascent(), text)
 
 	def drawCursor(self, painter):
 		pane = self.pane
@@ -147,10 +154,9 @@ class PaneView(QWidget):
 		painter.drawText(x, y + metrics.ascent(), ch)
 
 	def drawCurrentLine(self, painter):
-		pane = self.pane
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
-		visibleY = pane.cursorY - pane.scrollY
+		visibleY = self.pane.cursorY - self.pane.scrollY
 		if visibleY < 0:
 			return
 		y = visibleY * lineHeight
@@ -161,6 +167,7 @@ class PaneView(QWidget):
 		selection = self.editor.selection
 		if not selection.active:
 			return
+		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
@@ -178,10 +185,9 @@ class PaneView(QWidget):
 					endCol = len(pane.buffer.lines[bufferY])
 				except IndexError:
 					endCol = startCol
-			x = self.gutterWidth + 1 + (startCol - pane.scrollX) * charWidth
+			x = self.gutterWidth + 8 + (startCol - pane.scrollX) * charWidth
 			w = (endCol - startCol) * charWidth
-			y = visibleLine * lineHeight
-			painter.fillRect(x, y, w, lineHeight, QColor(SELECTION))
+			painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, QColor(SELECTION))
 
 	def tokenColor(self, tokenType):
 		colors = {
@@ -224,6 +230,6 @@ class PaneView(QWidget):
 		self.editor.notifyChanged()
 		self.cursorChanged.emit(self.pane.cursorY + 1, self.pane.cursorX + 1)
 
-	def visualColumn(self, text):
-		expanded = text.replace("\t", " " * self.editor.settings.tabSize)
-		return QFontMetrics(self.font).horizontalAdvance(expanded)
+	#def visualColumn(self, text):
+	#	expanded = text.replace("\t", " " * self.editor.settings.tabSize)
+	#	return QFontMetrics(self.font).horizontalAdvance(expanded)

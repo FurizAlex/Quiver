@@ -8,44 +8,89 @@ sys.path.insert(0, str(ROOT))
 from PyQt6.QtCore import Qt
 
 from frontend.qt.qtTheme import loadQtTheme
-from frontend.qt.editorQt import EditorQt, EditorSignals
+from frontend.qt.editorQt import EditorQt
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSplitter
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSplitter, QSplitterHandle
+from PyQt6.QtGui import QFontDatabase, QFont, QPainter, QColor, QPen
 from frontend.qt.statusBar import StatusBar
 from frontend.qt.editorView import EditorView
-from frontend.qt.tabBar import TabBar
-from frontend.qt.titleBar import TitleBar
 from frontend.qt.explorer import Explorer
 
+def loadAppFont():
+	fontID = QFontDatabase.addApplicationFont("assets/fonts/TerminusBold.ttf")
+	if fontID != -1:
+		family = QFontDatabase.applicationFontFamilies(fontID)[0]
+	else:
+		family = "Courier New"
+	font = QFont(family)
+	font.setPointSize(16)
+	font.setBold(True)
+	font.setStyleHint(QFont.StyleHint.TypeWriter)
+	font.setStyleStrategy(QFont.StyleStrategy.NoFontMerging | QFont.StyleStrategy.PreferBitmap)
+	return font
+
+class DashedSpliiter(QSplitter):
+	def createHandle(self):
+		return DashedHandle(self.orientation(), self)
+	
+class DashedHandle(QSplitterHandle):
+	def paintEvent(self, event):
+		painter = QPainter(self)
+		painter.fillRect(self.rect(), QColor("#000000"))
+		from PyQt6.QtGui import QPen
+		pen = QPen(QColor("#FFFFFF"))
+		pen.setStyle(Qt.PenStyle.DashLine)
+		pen.setWidth(1)
+		painter.setPen(pen)
+		cx = self.width() // 2
+		painter.drawLine(cx, 0, cx, self.height())
+
+class BorderOverlay(QWidget):
+	MARGIN = 12
+	def __init__(self, parent):
+		super().__init__(parent)
+		self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+		self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+		self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+		self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+	def paintEvent(self, event):
+		margin = self.MARGIN
+		painter = QPainter(self)
+		pen = QPen(QColor("#FFFFFF"))
+		pen.setWidth(1)
+		painter.setPen(pen)
+		painter.drawRect(margin, margin, self.width() - margin * 2 - 1, self.height() - margin * 2 - 1)
+
 class MainWindow(QMainWindow):
-	def __init__(self):
+	CONTENT_MARGIN = BorderOverlay.MARGIN + 2
+	def __init__(self, appFont: QFont):
 		super().__init__()
 		self.editor = EditorQt()
+		self.appFont = appFont
 
-		central = QWidget()
-		layout = QVBoxLayout(central)
-		layout.setContentsMargins(0, 0, 0, 0)
-		layout.setSpacing(0)
+		margin = self.CONTENT_MARGIN
 
-		self.tabs = TabBar(self.editor)
-		self.tabs.rebuild()
-		
-		self.titleBar = TitleBar(self.editor)
+		root = QWidget()
+		root.setStyleSheet("background: black;")
+		rootLayout = QVBoxLayout(root)
+		rootLayout.setContentsMargins(margin, margin, margin, margin)
+		rootLayout.setSpacing(0)
 
-		self.explorer = Explorer(self.editor)
+		self.explorer = Explorer(self.editor, appFont)
 		self.explorer.rebuild()
 
-		self.views = EditorView(self.editor)
+		self.views = EditorView(self.editor, appFont)
 
-		splitter = QSplitter(Qt.Orientation.Horizontal)
-		splitter.setHandleWidth(1)
+		splitter = DashedSpliiter(Qt.Orientation.Horizontal)
+		splitter.setHandleWidth(8)
 		splitter.addWidget(self.explorer)
 		splitter.addWidget(self.views)
 		splitter.setStretchFactor(1, 1)
-		splitter.setSizes([220, 9999])
+		splitter.setSizes([200, 9999])
 
-		self.statusBarWidget = StatusBar()
-
+		self.statusBarWidget = StatusBar(appFont)
+		self.statusBarWidget.setStyleSheet("background: #0000AA; color: white; border-top: 1px solid white;")
 		for sig in (
 			self.editor.signals.cursorMoved,
 			self.editor.signals.changed,
@@ -53,23 +98,37 @@ class MainWindow(QMainWindow):
 		):
 			sig.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
 		
-		layout.addWidget(self.tabs)
-		layout.addWidget(self.titleBar)
-		layout.addWidget(splitter, stretch=1)
-		layout.addWidget(self.statusBarWidget)
+		rootLayout.addWidget(splitter, stretch=1)
+		rootLayout.addWidget(self.statusBarWidget)
+		self.setCentralWidget(root)
 
-		self.setCentralWidget(central)
+		self.border = BorderOverlay(root)
+		self.border.raise_()
+
 		self.setWindowTitle("Quiver")
 		self.resize(1280, 720)
-		self.setMinimumSize(1000, 700)
+		self.setMinimumSize(800, 550)
 
 		self.statusBarWidget.updateState(self.editor)
 		self.views.setFocus()
 
+	def resizeEvent(self, event):
+		super().resizeEvent(event)
+		if hasattr(self, "_border"):
+			self.border.resize(self.centralWidget().size())
+			self.border.raise_()
+
+	def showEvent(self, event):
+		super().showEvent(event)
+		self.border.resize(self.centralWidget().size())
+		self.border.raise_()
+
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
+	appFont = loadAppFont()
+	app.setFont(appFont)
 	app.setStyleSheet(loadQtTheme("quiver"))
-	window = MainWindow()
+	window = MainWindow(appFont)
 	window.show()
 	window.editor.resize(window.width(), window.height())
 	sys.exit(app.exec())

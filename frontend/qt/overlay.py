@@ -11,6 +11,7 @@ class OverlayWidget(QWidget):
 		self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 		self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
 		self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+		self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
 		editor.signals.changed.connect(self.update)
 
@@ -38,41 +39,47 @@ class OverlayWidget(QWidget):
 	def drawPalette(self, painter, metrics):
 		items = self.filtered()
 		rowHeight = metrics.height() + 4
-		contentRows = min(len(items), 10)
-		height = 32 + rowHeight + contentRows * rowHeight + rowHeight + 16
-		width = min(self.width() - 80, 600)
-		x = (self.width() - width) // 2
-		y = (self.height() - height) // 3
+		visibleItems = min(len(items), 10)
 
-		painter.fillRect(x, y, width, height, QColor("#0000AA"))
+		boxWidth = min(self.width() - 100, 620)
+		boxHeight = rowHeight * 2 + 8 + rowHeight * visibleItems + rowHeight + 20
+		boxX = (self.width() - boxWidth) // 2
+		boxY = (self.height() - boxHeight) // 3
+
+		painter.fillRect(boxX, boxY, boxWidth, boxHeight, QColor("#0000AA"))
 		painter.setPen(QColor("#FFFFFF"))
-		painter.drawRect(x, y, width - 1, height - 1)
+		painter.drawRect(boxX, boxY, boxWidth - 1, boxHeight - 1)
+
+		cy = boxY + 6
 
 		painter.setPen(QColor("#FFFF55"))
-		painter.drawText(x + 8, y + metrics.ascent() + 6, "COMMAND PALETTE")
+		painter.setFont(self.font)
+		painter.drawText(boxX + 8, cy + metrics.ascent(), "COMMAND PALETTE")
+		cy += rowHeight + 4
 
 		painter.setPen(QColor("#FFFFFF"))
-		inputY = y + 8 + rowHeight
-		painter.drawText(x + 8, inputY + metrics.ascent(), "> " + self.editor.paletteInput + "_")
+		painter.drawLine(boxX + 4, cy, boxX + boxWidth - 4, cy)
+		cy += 6
 
 		painter.setPen(QColor("#FFFFFF"))
-		divY = inputY + rowHeight + 2
-		painter.drawLine(x + 4, divY, x + width - 4, divY)
+		painter.drawText(boxX + 8, cy + metrics.ascent(), "> " + self.editor.paletteInput + "_")
+		cy += rowHeight + 4
 
-		itemY = divY + 8
+		painter.drawLine(boxX + 4, cy, boxX + boxWidth - 4, cy)
+		cy += 6
 		for i, item in enumerate(items[:10]):
 			selected = (i == self.editor.paletteSelection)
 			if selected:
-				painter.fillRect(x + 4, itemY - metrics.ascent() + 2, width - 8, rowHeight, QColor("#FFFFFF"))
+				painter.fillRect(boxX + 4, cy, boxWidth - 8, rowHeight, QColor("#FFFFFF"))
 				painter.setPen(QColor("#0000AA"))
 			else:
 				painter.setPen(QColor("#FFFFFF"))
-			painter.drawText(x + 10, itemY + metrics.ascent() - metrics.ascent() + rowHeight // 2 + metrics.ascent() // 2, item["name"])
-			itemY += rowHeight
+			painter.drawText(boxX + 10, cy + metrics.ascent(), item["name"])
+			cy += rowHeight
+		cy += 4
 		painter.setPen(QColor("#AAAAAA"))
-		hintY = y + height - 6
-		painter.drawText(x + 8, hintY, "ENTER execute   ESC close   UP/DOWN navigate")
-	
+		painter.drawText(boxX + 8, cy + metrics.ascent(), "ENTER execute   ESC close   UP/DOWN navigate")
+
 	def filtered(self):
 		query = self.editor.paletteInput.strip().lower()
 		items = self.editor.paletteItems

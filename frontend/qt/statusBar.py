@@ -1,15 +1,24 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QColor, QPainter
 
 class StatusBar(QWidget):
-	def __init__(self, parent=None):
+	def __init__(self, font: QFont, parent=None):
 		super().__init__(parent)
+		metrics = font.pointSize()
+		self.setObjectName("statusBar")
+		self.setFixedHeight(metrics * 3)
+
 		self.leftLabel = QLabel()
 		self.rightLabel = QLabel()
+
+		for label in (self.leftLabel, self.rightLabel):
+			label.setFont(font)
+			label.setStyleSheet("background: transparent; color: white;")
 		self.leftLabel.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 		self.rightLabel.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 		
-		layout = QHBoxLayout()
+		layout = QHBoxLayout(self)
 		layout.setContentsMargins(6, 0, 6, 0)
 		layout.setSpacing(0)
 
@@ -17,16 +26,18 @@ class StatusBar(QWidget):
 		layout.addStretch()
 		layout.addWidget(self.rightLabel)
 
-		self.setLayout(layout)
-		self.setFixedHeight(24)
-		self.setObjectName("statusBar")
+	def paintEvent(self, event):
+		painter = QPainter(self)
+		painter.fillRect(self.rect(), QColor("#0000AA"))
+		painter.setPen(QColor("#FFFFFF"))
+		painter.drawLine(0, 0, self.width(), 0)
 
 	def updateState(self, editor):
 		buffer = editor.pane.buffer
 		filename = buffer.filename or "[NO FILE]"
 		diagosticCount = buffer.diagnostics.count() if hasattr(buffer, "diagnostics") else 0
-		status = editor.status
-		if status.startswith("KEY="):
+		status = editor.status or ""
+		if status.startswith("KEY=") or status.startswith("'"):
 			status = ""
 		if editor.saving:
 			left = f"SAVE AS: {editor.saveInput}_"
