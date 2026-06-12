@@ -1,6 +1,6 @@
 import os
 from commands.fileCommands import openFileBuffer
-from PyQt6.QtWidgets import QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QPushButton
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontMetrics, QPainter, QColor
 
@@ -24,11 +24,10 @@ class ExplorerHeader(QWidget):
 		name = buffer.name.upper()
 		if buffer.modified:
 			name += " *"
+
 		textWidth = metrics.horizontalAdvance(name)
 		boxX, boxY = 4, 2
-		boxWidth = textWidth + 8
-		boxHeight = self.rowHeight - 4
-		painter.fillRect(boxX, boxY, boxWidth, boxHeight, QColor("#FFFFFF"))
+		painter.fillRect(boxX, boxY, textWidth + 8, self.rowHeight - 4, QColor("#FFFFFF"))
 		painter.setPen(QColor("#0000AA"))
 		painter.drawText(boxX + 4, boxY + metrics.ascent(), name)
 
@@ -43,14 +42,22 @@ class Explorer(QWidget):
 		self.setObjectName("explorerPanel")
 		self.setFixedWidth(240)
 
-		metrics = QFontMetrics(font)
-		rowHeight = metrics.height() + 4
-
 		layout = QVBoxLayout(self)
 		layout.setContentsMargins(0, 0, 0, 0)
 		layout.setSpacing(0)
 
 		self.header = ExplorerHeader(editor, font)
+
+		self.backButton = QPushButton("← ..")
+		self.backButton.setFont(font)
+		self.backButton.setFixedHeight(QFontMetrics(font).height() + 4)
+		self.backButton.setStyleSheet(
+			"QPushButton { background: #0000AA; color: white; "
+			"border: none; border-bottom: 1px solid #3333AA; "
+			"text-align: left; padding-left: 6px; }"
+			"QPushButton:hover { background: #0000CC; }"
+		)
+		self.backButton.clicked.connect(self.goBack)
 
 		self.listWidget = QListWidget()
 		self.listWidget.setObjectName("explorer")
@@ -62,15 +69,24 @@ class Explorer(QWidget):
 			"QListWidget::item:hover { background: #0000CC; color: white; }"
 		)
 		self.listWidget.viewport().setStyleSheet("background: #0000AA;")
-		self.listWidget.itemDoubleClicked.connect(self.openSelectedFile)
+		self.listWidget.itemClicked.connect(self.openSelectedFile)
 
 		layout.addWidget(self.header)
+		layout.addWidget(self.backButton)
 		layout.addWidget(self.listWidget, stretch=1)
 
-		self.refreshHeader()
+		editor.signals.changed.connect(self.syncVisibility)
+		self.syncVisibility()
 
-	def refreshHeader(self):
-		self.header.update()
+	def syncVisibility(self):
+		self.setVisible(self.editor.showExplorer)
+
+	def goBack(self):
+		parent = os.path.dirname(os.path.abspath(self.editor.explorerPath))
+		if parent != os.path.abspath(self.editor.explorerPath):
+			self.editor.explorerPath = parent
+			self.rebuild()
+			self.editor.notifyChanged()
 
 	def rebuild(self):
 		self.listWidget.clear()

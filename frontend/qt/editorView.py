@@ -209,27 +209,39 @@ class PaneView(QWidget):
 	def mousePressEvent(self, event):
 		self.editor.activePane = self.paneIndex
 		self.setFocus()
+		row, col = self.pixelToRowCol(event.position().x(), event.position().y())
+		self.pane.cursorX = col
+		self.pane.cursorY = row
+		self.editor.selection.begin(col, row)
+		self.dragging = True
+		self.editor.updateScroll()
+		self.editor.notifyChanged()
+		self.cursorChanged.emit(row + 1, col + 1)
 
+	def mouseReleaseEvent(self, event):
+		self.dragging = False
+		row, col = self.pixelToRowCol(event.position().x(), event.position().y())
+		select = self.editor.selection
+		if (select.active and select.startX == col and select.startY == row):
+			select.clear()
+		self.editor.notifyChanged()
+
+	def wheelEvent(self, event):
+		delta = event.angleDelta().y()
+		lines = 3
+		if delta > 0:
+			self.pane.scrollY = max(0, self.pane.scrollY - lines)
+		else:
+			maxScroll = max(0, len(self.pane.buffer.lines) - 1)
+			self.pane.scrollY = min(maxScroll, self.pane.scrollY + lines)
+		self.editor.notifyChanged()
+
+	def pixelToRowCol(self, px, py):
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
-
-		px = event.position().x()
-		py = event.position().y()
-
 		col = max(0, int((px - self.gutterWidth - 8) / charWidth)) + self.pane.scrollX
 		row = int(py / lineHeight) + self.pane.scrollY
-
 		row = max(0, min(row, len(self.pane.buffer.lines) - 1))
 		col = max(0, min(col, len(self.pane.buffer.lines[row])))
-
-		self.pane.cursorX = col
-		self.pane.cursorY = row
-
-		self.editor.updateScroll()
-		self.editor.notifyChanged()
-		self.cursorChanged.emit(self.pane.cursorY + 1, self.pane.cursorX + 1)
-
-	#def visualColumn(self, text):
-	#	expanded = text.replace("\t", " " * self.editor.settings.tabSize)
-	#	return QFontMetrics(self.font).horizontalAdvance(expanded)
+		return row, col

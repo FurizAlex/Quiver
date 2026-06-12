@@ -39,12 +39,15 @@ class OverlayWidget(QWidget):
 	def drawPalette(self, painter, metrics):
 		items = self.filtered()
 		rowHeight = metrics.height() + 4
-		visibleItems = min(len(items), 10)
+		visibleItems = min(len(items), 14)
 
 		boxWidth = min(self.width() - 100, 620)
-		boxHeight = rowHeight * 2 + 8 + rowHeight * visibleItems + rowHeight + 20
+		boxHeight = rowHeight + 6 + rowHeight + 6 + visibleItems * rowHeight + rowHeight + 16
 		boxX = (self.width() - boxWidth) // 2
-		boxY = (self.height() - boxHeight) // 3
+		boxY = max(10, (self.height() - boxHeight) // 3)
+
+		if boxY + boxHeight > self.height() - 10:
+			boxY = max(10, self.height() - boxHeight - 10)
 
 		painter.fillRect(boxX, boxY, boxWidth, boxHeight, QColor("#0000AA"))
 		painter.setPen(QColor("#FFFFFF"))
@@ -53,7 +56,6 @@ class OverlayWidget(QWidget):
 		cy = boxY + 6
 
 		painter.setPen(QColor("#FFFF55"))
-		painter.setFont(self.font)
 		painter.drawText(boxX + 8, cy + metrics.ascent(), "COMMAND PALETTE")
 		cy += rowHeight + 4
 
@@ -61,7 +63,6 @@ class OverlayWidget(QWidget):
 		painter.drawLine(boxX + 4, cy, boxX + boxWidth - 4, cy)
 		cy += 6
 
-		painter.setPen(QColor("#FFFFFF"))
 		painter.drawText(boxX + 8, cy + metrics.ascent(), "> " + self.editor.paletteInput + "_")
 		cy += rowHeight + 4
 

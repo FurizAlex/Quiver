@@ -10,20 +10,17 @@ from PyQt6.QtCore import Qt
 class PaneContainer(QWidget):
 	def __init__(self, editor, font):
 		super().__init__()
-
 		self.editor = editor
 		self.font = font
-
 		self.paneViews = []
 
-		layout = QHBoxLayout()
+		layout = QHBoxLayout(self)
 		layout.setContentsMargins(0, 0, 0, 0)
 		layout.setSpacing(0)
 
 		self.splitter = QSplitter(Qt.Orientation.Horizontal)
-
+		self.splitter.setHandleWidth(8)
 		layout.addWidget(self.splitter)
-		self.setLayout(layout)
 
 		editor.signals.panesChanged.connect(self.rebuildPanes)
 		self.rebuildPanes()

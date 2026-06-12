@@ -2,39 +2,34 @@ import curses
 
 class StatusBar:
 	def draw(self, stdscr, editor, h, w):
-		filename = editor.filename or "[NO FILE]"
-		diagnosticCount = editor.pane.buffer.diagnostics.count()
+		buffer = editor.pane.buffer
+		filename = buffer.filename or "[NO FILE]"
+		diagnosticCount = buffer.diagnostics.count()
 
 		if editor.saving:
-			left = (
-				f" SAVE AS: {editor.saveInput}"
-			)
+			left = f" SAVE AS: {editor.saveInput}"
 		else:
+			language = buffer.language.name.upper() if buffer.language else "TEXT"
 			left = (
 				f" {editor.mode} | "
 				f"{filename} | "
 				f"Diag {diagnosticCount} | "
 				f"Ln {editor.pane.cursorY + 1} | "
 				f"Col {editor.pane.cursorX + 1} | "
-				f"{editor.pane.buffer.language.name.upper() if editor.pane.buffer.language else 'TEXT'} | "
+				f"{language} | "
 				f"{editor.status}"
 			)
-
 		right = (
 			"^S Save  "
 			"^O Open  "
 			"^P Commands  "
 			"^N Next"
 		)
-
 		available = w - len(right) - 1
 		if len(left) > available:
 			left = left[:available]
-
 		space = max(1, w - len(left) - len(right) - 1)
-
-		status = (left + (" ") * space + right)
-
+		status = left + " " * space + right
 		try:
 			stdscr.addstr(
 				h - 2,

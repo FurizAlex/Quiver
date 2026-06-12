@@ -12,24 +12,6 @@ def fuzzyMatch(query, text):
 			i += 1
 	return i == len(query)
 
-def filtered(editor):
-	query = editor.paletteInput.strip()
-
-	if not query:
-		return editor.paletteItems
-	items = [
-		item
-		for item in editor.paletteItems
-		if fuzzyMatch(query, item["name"])
-	]
-	items.sort(
-		key=lambda item: (
-			not item["name"].lower().startswith(query.lower()),
-			len(item["name"])
-		)
-	)
-	return items
-
 def execute(editor):
 	items = filtered(editor)
 
@@ -49,23 +31,101 @@ def handle(editor, event):
 
 	if key == "ESC":
 		editor.paletteOpen = False
+		editor.paletteInput = ""
+		editor.paletteMode = "commands"
+		editor.notifyChanged()
+		return
+	elif key == "UP":
+		editor.paletteSelection = max(0, editor.paletteSelection - 1)
+		editor.notifyChanged()
+		return
+	elif key == "DOWN":
+		items = filtered(editor)
+		editor.paletteSelection = min(len(items) - 1, editor.paletteSelection + 1)
 		editor.notifyChanged()
 		return
 	elif key == "ENTER":
-		execute(editor)
+		items = filtered(editor)
+		if not items:
+			return
+		select = items[min(editor.paletteSelection, len(items) - 1)]
+		command = select.get("command", "")
+		if editor.paletteMode == "files":
+			path = select.get("path", "")
+			if os.path.isdir(path):
+				editor.paletteDir = path
+				editor.paletteInput = ""
+				editor.paletteSelection = 0
+				populateFilePalette(editor, path)
+				editor.notifyChanged()
+				return
+			else:
+				openFileBuffer(editor, path)
+		elif command.startswith("__theme__"):
+			themeId = command[len("__theme__"):]
+			applyTheme(editor, themeId)
+			editor.paletteOpen = False
+			editor.paletteInput = ""
+			editor.notifyChanged()
+			return
+		elif editor.paletteMode == "commands":
+			command = select.get("command")
+			if command:
+				editor.paletteOpen = False
+				editor.paletteInput = ""
+				editor.paletteMode = "commands"
+				editor.commands.execute(editor, command)
+				editor.notifyChanged()
+				return
+		editor.paletteOpen = False
+		editor.paletteInput = ""
+		editor.notifyChanged()
 		return
 	elif key == "BACKSPACE":
-		editor.paletteInput = editor.paletteInput[:-1]
-	elif key == "UP":
-		if items:
-			editor.paletteSelection = max(0, editor.paletteSelection - 1)
-	elif key == "DOWN":
-		if items:
-			editor.paletteSelection = min(len(items) - 1, editor.paletteSelection + 1)
+		if editor.paletteInput:
+			editor.paletteInput = editor.paletteInput[:-1]
+		elif editor.paletteMode == "files":
+			current = getattr(editor, "paletteDir", editor.explorerPath)
+			parent = os.path.dirname(os.path.abspath(current))
+			if parent != os.path.abspath(current):
+				editor.paletteDir = parent
+				populateFilePalette(editor, parent)
+		editor.paletteSelection = 0
+		editor.notifyChanged()
+		return
 	elif len(key) == 1 and not event.ctrl and not event.alt:
 		editor.paletteInput += key
-	editor.paletteSelection = min(editor.paletteSelection, max(0, len(items) - 1))
-	editor.notifyChanged()
+		editor.paletteSelection = 0
+		editor.notifyChanged()
+
+def filtered(editor):
+	query = editor.paletteInput.strip().lower()
+	items = editor.paletteItems
+	if not query:
+		return items
+	matched = [i for i in items if fuzzy(query, i["name"].lower())]
+	matched.sort(key=lambda i: (not i["name"].lower().startswith(query), len(i["name"])))
+	return matched
+
+def fuzzy(query, text):
+	it = 0
+	for ch in text:
+		if it < len(query) and ch == query[it]:
+			it += 1
+	return it == len(query)
+
+def applyTheme(editor, themeId):
+	try:
+		editor.settings.set("theme", themeId)
+		editor.currentTheme = themeId
+	except Exception as e:
+		editor.status = f"Theme error: {e}"
+		editor.statusTimer = 120
+	if hasattr(editor, "signals"):
+		import importlib
+		themeModule = importlib.import_module(f"themes.{themeId}")
+		from frontend.qt.amigaPalette import applyThemeToQt
+		applyThemeToQt(themeModule.THEME)
 
 def openCommandPalette(editor):
 	editor.paletteOpen = True
@@ -95,4 +155,20 @@ def openFilePalette(editor):
 				"action": "open_file_path",
 				"path": os.path.abspath(file)
 			})
+	editor.paletteItems = items
+
+def populateFilePalette(editor, path):
+	items = []
+	current = os.path.abspath(path)
+	parent = os.path.dirname(current)
+
+	if parent != current:
+		items.append({"name": ".. (go up)", "path": parent,})
+	try:
+		for name in sorted(os.listdir(path)):
+			fullPath = os.path.join(path, name)
+			display = f"> {name}" if os.path.isdir(fullPath) else f"    {name}"
+			items.append({"name": display, "path": fullPath})
+	except Exception:
+		pass
 	editor.paletteItems = items

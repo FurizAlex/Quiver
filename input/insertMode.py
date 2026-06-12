@@ -39,15 +39,11 @@ def deleteSelection(editor):
 
 	if sy == ey:
 		line = buffer.lines[sy]
-
 		buffer.lines[sy] = (line[:sx] + line[ex:])
 	else:
 		first = buffer.lines[sy][:sx]
 		last = buffer.lines[ey][ex:]
-		
-		buffer.lines[sy:ey + 1] = [
-			first + last
-		]
+		buffer.lines[sy:ey + 1] = [first + last]
 	editor.pane.cursorX = sx
 	editor.pane.cursorY = sy
 	selection.clear()
@@ -56,15 +52,9 @@ def insertText(editor, text):
 	saveUndo(editor)
 	buffer = editor.pane.buffer
 	pane = editor.pane
-
 	buffer.insertChar(pane.cursorX, pane.cursorY, text)
 	pane.cursorX += len(text)
-
-	editor.status = repr(buffer.lines[pane.cursorY])
 	editor.notifyChanged()
-
-def isBackspace(key):
-	return key in (8, 127, curses.KEY_BACKSPACE)
 
 def handle(editor, event):
 	buffer = editor.pane.buffer
@@ -73,6 +63,27 @@ def handle(editor, event):
 	clipboard = editor.clipboard
 	key = event.key
 
+	if event.ctrl and event.shift:
+		match key.upper():
+			case "LEFT":
+				startOrUpdateSelection(editor)
+				moveWordLeft(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+			case "RIGHT":
+				startOrUpdateSelection(editor)
+				moveWordRight(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+			case "UP":
+				startOrUpdateSelection(editor)
+				moveUp(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+			case "DOWN":
+				startOrUpdateSelection(editor)
+				moveDown(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+		editor.notifyChanged()
+		return
+	
 	if event.ctrl:
 		match key.upper():
 			case "S":
@@ -88,11 +99,9 @@ def handle(editor, event):
 			case "O":
 				from input.paletteMode import openFilePalette
 				openFilePalette(editor)
-				editor.notifyChanged()
 			case "P":
 				from input.paletteMode import openCommandPalette
 				openCommandPalette(editor)
-				editor.notifyChanged()
 			case "G":
 				editor.gotoMode = True
 				editor.gotoInput = ""
@@ -101,52 +110,107 @@ def handle(editor, event):
 				editor.searchInput = ""
 			case "C":
 				if selection.active:
-					sel = selection.normalized()
-					text = buffer.getSelection(sel["sx"], sel["sy"], sel["ex"], sel["ey"])
+					select = selection.normalized()
+					text = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
 					clipboard.copy(text)
 			case "V":
 				text = clipboard.paste()
 				if text:
+					if selection.active:
+						deleteSelection(editor)
 					insertText(editor, text)
 			case "X":
 				if selection.active:
-					sel = selection.normalized()
-					text = buffer.getSelection(sel["sx"], sel["sy"], sel["ex"], sel["ey"])
+					select = selection.normalized()
+					text = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
 					clipboard.copy(text)
 					deleteSelection(editor)
 			case "W":
 				editor.commands.execute("close_file", editor)
+			case "T":
+				if hasattr(editor, "newFileQt"):
+					editor.newFileQt()
+				elif getattr(editor, "newFileConfirm", False):
+					createNewBuffer(editor)
+				else:
+					newFile(editor)
+			case "BACKSPACE":
+				saveUndo(editor)
+				line = buffer.lines[pane.cursorY]
+				x = pane.cursorX
+				if x == 0:
+					pass
+				else:
+					i = x
+					while i > 0 and line[i - 1] == " ":
+						i -= 1
+					while i > 0 and line[i - 1] != " ":
+						i -= 1
+					buffer.lines[pane.cursorY] = line[:i] + line[x:]
+					pane.cursorX = i
+			case "A":
+				selection.begin(0, 0)
+				lastLine = len(buffer.lines) - 1
+				selection.update(len(buffer.lines[lastLine]), lastLine)
+			case "D":
+				saveUndo(editor)
+				line = buffer.lines[pane.cursorY]
+				buffer.lines.insert(pane.cursorY + 1, line)
+				pane.cursorY += 1
+			case "/":
+				saveUndo(editor)
+				line = buffer.lines[pane.cursorY]
+				stripped = line.lstrip()
+				indent = line[:len(line) - len(stripped)]
+				if stripped.startswith("#"):
+					buffer.lines[pane.cursorY] = indent + stripped[1:].lstrip()
+				else:
+					buffer.lines[pane.cursorY] = indent + "# " + stripped
+			case "HOME":
+				pane.cursorY = 0
+				pane.cursorX = 0
+			case "END":
+				pane.cursorX = len(buffer.lines) - 1
+				pane.cursorX = len(buffer.lines[pane.cursorY])
 			case _:
 				pass
 		editor.notifyChanged()
 		return
 	elif key == "TAB":
-		insertText(editor, "\t")
+		if selection.active:
+			saveUndo(editor)
+			select = selection.normalized()
+			for y in range(select["sy"], select["ey"] + 1):
+				if editor.settings.useTabs:
+					buffer.lines[y] = "\t" + buffer.lines[y]
+				else:
+					buffer.lines[y] = " " * editor.settings.tabSize + buffer.lines[y]
+		else:
+			if editor.settings.useTabs:
+				insertText(editor, "\t")
+			else:
+				insertText(editor, " " * editor.settings.tabSize)
 	elif key == "ENTER":
 		saveUndo(editor)
 		line = buffer.lines[pane.cursorY]
-
 		left = line[:pane.cursorX]
 		right = line[pane.cursorX:]
 		indent = ""
-
 		for ch in left:
 			if ch in (" ", "\t"):
 				indent += ch
 			else:
 				break
-		
 		if line.rstrip().endswith(":"):
 			if editor.settings.useTabs:
 				indent += "\t"
 			else:
 				indent += " " * editor.settings.tabSize
-
 		buffer.lines[pane.cursorY] = left
 		buffer.lines.insert(pane.cursorY + 1, indent + right)
-
 		pane.cursorY += 1
 		pane.cursorX = len(indent)
+		editor.updateScroll()
 		editor.notifyChanged()
 	elif key == "BACKSPACE":
 		saveUndo(editor)
@@ -158,26 +222,32 @@ def handle(editor, event):
 		elif pane.cursorY > 0:
 			prev = len(buffer.lines[pane.cursorY - 1])
 			buffer.mergeLine(pane.cursorY)
-			
 			pane.cursorY -= 1
 			pane.cursorX = prev
 		editor.notifyChanged()
-	elif event.shift and key == "LEFT":
-		startOrUpdateSelection(editor)
-		moveLeft(buffer, pane)
-		selection.update(pane.cursorX, pane.cursorY)
-	elif event.shift and key == "RIGHT":
-		startOrUpdateSelection(editor)
-		moveRight(buffer, pane)
-		selection.update(pane.cursorX, pane.cursorY)
-	#elif key == curses.KEY_SHIFT_UP:
-	#	startOrUpdateSelection(editor)
-	#	moveUp(buffer, pane)
-	#	selection.update(pane.cursorX, pane.cursorY)
-	#elif key == curses.KEY_SHIFT_DOWN:
-	#	startOrUpdateSelection(editor)
-	#	moveDown(buffer, pane)
-	#	selection.update(pane.cursorX, pane.cursorY)
+	elif key == "DELETE":
+		saveUndo(editor)
+		if selection.active:
+			deleteSelection(editor)
+		else:
+			line = buffer.lines[pane.cursorY]
+			if pane.cursorX < len(line):
+				buffer.lines[pane.cursorY] = line[:pane.cursorX] + line[pane.cursorX + 1:]
+			elif pane.cursorY < len(buffer.lines) - 1:
+				buffer.mergeLine(pane.cursorY + 1)
+		editor.notifyChanged()
+	elif key == "PAGE_UP":
+		visibleHeight = editor.layout.paneVisibleHeight()
+		pane.cursorY = max(0, pane.cursorY - visibleHeight)
+		pane.cursorX = min(pane.cursorX, len(buffer.lines[pane.cursorY]))
+		editor.updateScroll()
+		editor.notifyChanged()
+	elif key == "PAGE_DOWN":
+		visibleHeight = editor.layout.paneVisibleHeight()
+		pane.cursorY = min(len(buffer.lines) - 1, pane.cursorY + visibleHeight)
+		pane.cursorX = min(pane.cursorX, len(buffer.lines[pane.cursorY]))
+		editor.updateScroll()
+		editor.notifyChanged()
 	elif key == "LEFT":
 		selection.clear()
 		moveLeft(buffer, pane)
@@ -194,28 +264,60 @@ def handle(editor, event):
 		selection.clear()
 		moveDown(buffer, pane)
 		editor.notifyChanged()
-	#elif key == KEY_CTRL_SHIFT_LEFT:
-	#	startOrUpdateSelection(editor)
-	#	pane.cursorX = prevWordStart(buffer.lines[pane.cursorY], pane.cursorX)
-	#	selection.update(pane.cursorX, pane.cursorY)
-	#elif key == KEY_CTRL_SHIFT_RIGHT:
-	#	startOrUpdateSelection(editor)
-	#	pane.cursorX = nextWordStart(buffer.lines[pane.cursorY], pane.cursorX)
-	#	selection.update(pane.cursorX, pane.cursorY)
 	elif key == "HOME":
-		moveHome(buffer, pane)
+		line = buffer.lines[pane.cursorY]
+		firstNonWS = len(line) - len(line.lstrip())
+		if pane.cursorX == firstNonWS:
+			pane.cursorX = 0
+		else:
+			pane.cursorX = firstNonWS
 		editor.notifyChanged()
 	elif key == "END":
 		moveEnd(buffer, pane)
 		editor.notifyChanged()
 	elif len(key) == 1 and not event.ctrl and not event.alt:
 		saveUndo(editor)
+		line = buffer.lines[pane.cursorY]
+		closers = set(PAIRS.values())
+		if (key in closers and pane.cursorX < len(line) and line[pane.cursorX] == key):
+			pane.cursorX += 1
 		if key in PAIRS:
-			insertText(editor, key + PAIRS[key])
-			pane.cursorX -= 1
+			if selection.active:
+				select = selection.normalized()
+				text = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
+				deleteSelection(editor)
+				insertText(editor, key + text + PAIRS[key])
+				pane.cursorX -= 1
+			else:
+				insertText(editor, key + PAIRS[key])
+				pane.cursorX -= 1
 		else:
 			insertText(editor, key)
 		editor.notifyChanged()
+
+def newFile(editor):
+	if editor.pane.buffer.modified:
+		editor.pendingAction = "new_file"
+		editor.status = "Wait! You haven't saved yet! Pressing Ctrl+T again will confirm a new file, ESC to cancel"
+		editor.statusTimer = 180
+		editor.newFileConfirm = True
+		editor.notifyChanged()
+		return
+	createNewBuffer(editor)
+
+def createNewBuffer(editor):
+	from core.buffer import Buffer
+	buffer = Buffer(editor=editor, language=editor.languageRegistry.get("text"))
+	editor.buffers.append(buffer)
+	newIndex = len(editor.buffers) - 1
+	editor.currentBuffer = newIndex
+	editor.pane.buffer = buffer
+	editor.pane.cursorX = 0
+	editor.pane.cursorY = 0
+	editor.status = "NEW FILE"
+	editor.statusTimer = 120
+	editor.newFileConfirm = False
+	editor.notifyChanged()
 			
 def startOrUpdateSelection(editor):
 	pane = editor.pane

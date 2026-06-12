@@ -8,26 +8,16 @@ class Layout:
 
 		if self.editor.showExplorer:
 			width -= self.editor.explorerWidth + 1
-		return max(20, width // len(self.editor.panes))
+		n = len(self.editor.panes)
+		width -= (n - 1)
+		return max(20, width // n)
 
 	def paneStartX(self, paneIndex):
 		startX = 1
 		if self.editor.showExplorer:
 			startX += self.editor.explorerWidth + 1
-		
-		startX += paneIndex * self.paneWidth()
-
+		startX += paneIndex * (self.paneWidth() + 1)
 		return startX
-	
-	def recalculate(self):
-		if not self.panes:
-			return
-		width = self.viewport.width()
-		paneWidth = width // len(self.editor.panes)
-		x = 0
-		for pane in self.panes:
-			pane.setGeometry(x, 0, paneWidth, self.editor.viewport.height())
-			x += paneWidth
 
 	def textStartX(self, paneIndex):
 		return (

@@ -58,10 +58,10 @@ class Editor:
 
 		self.settings.load(self.config.get("settings", {}))
 
+		self.theme = Theme()
+		self.currentTheme = self.settings.get("theme")
+		self.theme.load(self.currentTheme)
 		if stdscr is not None:
-			self.theme = Theme()
-			self.currentTheme = self.settings.get("theme")
-			self.theme.load(self.currentTheme)
 			self.theme.initialize()
 		self.plugins = PluginManager()
 		self.layout = Layout(self)
@@ -139,17 +139,17 @@ class Editor:
 		)
 		if event.key == "MOUSE":
 			from input.mouseMode import handleMouse
-
 			handleMouse(self, event)
 			return
 		from input.registry import INPUT_HANDLERS
-
 		self.plugins.dispatchKey(self, event)
 
 		if self.paletteOpen:
 			self.mode = "PALETTE"
 		elif self.saving:
 			self.mode = "SAVE"
+		elif self.gotoMode:
+			self.mode = "GOTO"
 		elif self.focus == "explorer":
 			self.mode = "EXPLORER"
 		elif self.searchMode:
@@ -157,7 +157,6 @@ class Editor:
 		else:
 			self.mode = "INSERT"
 		handler = INPUT_HANDLERS.get(self.mode)
-
 		if handler:
 			handler(self, event)
 		self.notifyStatusChanged()

@@ -15,9 +15,10 @@ from PyQt6.QtGui import QFontDatabase, QFont, QPainter, QColor, QPen
 from frontend.qt.statusBar import StatusBar
 from frontend.qt.editorView import EditorView
 from frontend.qt.explorer import Explorer
+from frontend.qt.tabBar import TabBar
 
 def loadAppFont():
-	fontID = QFontDatabase.addApplicationFont("assets/fonts/TerminusBold.ttf")
+	fontID = QFontDatabase.addApplicationFont("assets/fonts/Perfect DOS VGA 437.ttf")
 	if fontID != -1:
 		family = QFontDatabase.applicationFontFamilies(fontID)[0]
 	else:
@@ -80,6 +81,7 @@ class MainWindow(QMainWindow):
 		self.explorer = Explorer(self.editor, appFont)
 		self.explorer.rebuild()
 
+		self.tabBar = TabBar(self.editor, appFont)
 		self.views = EditorView(self.editor, appFont)
 
 		splitter = DashedSpliiter(Qt.Orientation.Horizontal)
@@ -98,6 +100,7 @@ class MainWindow(QMainWindow):
 		):
 			sig.connect(lambda *_: self.statusBarWidget.updateState(self.editor))
 		
+		rootLayout.addWidget(self.tabBar)
 		rootLayout.addWidget(splitter, stretch=1)
 		rootLayout.addWidget(self.statusBarWidget)
 		self.setCentralWidget(root)
@@ -112,6 +115,23 @@ class MainWindow(QMainWindow):
 		self.statusBarWidget.updateState(self.editor)
 		self.views.setFocus()
 
+	def closeEvent(self, event):
+		unsaved = [b.name for b in self.editor.buffers if b.modified]
+		if unsaved:
+			from PyQt6.QtWidgets import QMessageBox
+			names = ", ".join(unsaved)
+			reply = QMessageBox.question(
+				self,
+				"Unsaved Changes",
+				f"Wait! You haven't saved on\n{names}\n\nWould you still like to quit?",
+				QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+				QMessageBox.StandardButton.No
+			)
+			if reply != QMessageBox.StandardButton.Yes:
+				event.ignore()
+				return
+		event.accept()
+
 	def resizeEvent(self, event):
 		super().resizeEvent(event)
 		if hasattr(self, "_border"):
@@ -122,6 +142,26 @@ class MainWindow(QMainWindow):
 		super().showEvent(event)
 		self.border.resize(self.centralWidget().size())
 		self.border.raise_()
+		self.views.paneContainer.paneViews[0].setFocus()
+
+	def newFileQt(self):
+		if self.pane.buffer.modified:
+			from PyQt6.QtWidgets import QMessageBox
+			reply = QMessageBox.question(
+			None, "UNSAVED CHANGES", f"'{self.pane.buffer.name}' has unsaved changes. Would you like to create a new file anyway?",
+			QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+			QMessageBox.StandardButton.No
+		)
+		if reply != QMessageBox.StandardButton.Yes:
+			return
+		from core.buffer import Buffer
+		buffer = Buffer(editor=self, language=self.languageRegistry.get("text"))
+		self.buffers.append(buffer)
+		self.currentBuffer = len(self.buffers) - 1
+		self.pane.buffer = buffer
+		self.pane.cursorX = 0
+		self.pane.cursorY = 0
+		self.notifyChanged()
 
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
