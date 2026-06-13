@@ -1,51 +1,26 @@
 THEME = {
-	"meta": {
-		"name": "Amiga"
-	},
-
-	"defaults": {
-		"fg": "white",
-		"bg": "blue"
-	},
-
-	"text": {
-		"fg": "white",
-		"bg": "blue"
-	},
-
-	"diagnosticError": {
-		"fg": "red"
-	},
-
-	"selection": {
-		"fg": "blue",
-		"bg": "white"
-	},
-
-	"paletteItem": {
-	"fg": "white",
-	"bg": "blue"
-	},
-
-	"paletteSelection": {
-		"fg": "white",
-		"bg": "black",
-	},
-
-	"keyword": {
-		"fg": "yellow",
-		"bold": True
-	},
-
-	"string": {
-		"fg": "cyan"
-	},
-
-	"comment": {
-		"fg": "green"
-	},
-
-	"text": {
-		"fg": "white"
-	},
+    "meta": {"name": "Quiver", "author": "FurizAlex"},
+    "defaults":          {"fg": "white",   "bg": "black"},
+    "text":              {"fg": "white",   "bg": "blue"},
+    "keyword":           {"fg": "yellow",  "bg": "blue",  "bold": True},
+    "string":            {"fg": "cyan",    "bg": "blue"},
+    "comment":           {"fg": "grey",   "bg": "blue"},
+    "number":            {"fg": "yellow",  "bg": "blue"},
+    "diagnosticError":   {"fg": "red",     "bg": "blue"},
+    "selection":         {"fg": "blue",    "bg": "black"},
+    "lineNumber":        {"fg": "white",   "bg": "blue"},
+    "currentLineNumber": {"fg": "yellow",  "bg": "blue"},
+    "statusBar":         {"fg": "white",   "bg": "blue"},
+    "tab":               {"fg": "white",   "bg": "black"},
+    "activeTab":         {"fg": "yellow",  "bg": "blue",  "bold": True},
+    "explorerTitle":     {"fg": "yellow",  "bg": "blue",  "bold": True},
+    "explorerItem":      {"fg": "white",   "bg": "blue"},
+    "explorerSelection": {"fg": "white",    "bg": "blue"},
+    "paletteBorder":     {"fg": "white",   "bg": "blue"},
+    "paletteTitle":      {"fg": "white",  "bg": "black", "bold": True},
+    "paletteItem":       {"fg": "white",   "bg": "blue"},
+    "paletteSelection":  {"fg": "blue",   "bg": "white"},
+    "searchBar":         {"fg": "white",   "bg": "black"},
+    "splitter":          {"fg": "white",   "bg": "blue"},
+    "activeSplitter":    {"fg": "yellow",  "bg": "blue"},
 }

@@ -18,7 +18,7 @@ from frontend.qt.explorer import Explorer
 from frontend.qt.tabBar import TabBar
 
 def loadAppFont():
-	fontID = QFontDatabase.addApplicationFont("assets/fonts/Perfect DOS VGA 437.ttf")
+	fontID = QFontDatabase.addApplicationFont("assets/fonts/Terminus.ttf")
 	if fontID != -1:
 		family = QFontDatabase.applicationFontFamilies(fontID)[0]
 	else:
@@ -68,6 +68,7 @@ class MainWindow(QMainWindow):
 	def __init__(self, appFont: QFont):
 		super().__init__()
 		self.editor = EditorQt()
+		self.editor.qtWindow = self
 		self.appFont = appFont
 
 		margin = self.CONTENT_MARGIN
@@ -114,6 +115,29 @@ class MainWindow(QMainWindow):
 
 		self.statusBarWidget.updateState(self.editor)
 		self.views.setFocus()
+
+	def applyQtTheme(self, themeDef: dict):
+		from frontend.qt.amigaPalette import getColor
+		explorerBg			= getColor("EXPLORER_BG")
+		explorerFg			= getColor("EXPLORER_FG")
+		explorerSelectBg	= getColor("EXPLORER_SELECT_BG")
+		explorerSelectFg	= getColor("EXPLORER_SELECT_FG")
+
+		listQss = (
+			"QListWidget { background: " + explorerBg + "; color: " + explorerFg + "; "
+			"border: none; outline: none; }"
+			"QListWidget::item { background: " + explorerBg + "; color: " + explorerFg + "; "
+			"padding: 1px 4px; }"
+			"QListWidget::item:selected { background: " + explorerSelectBg + "; "
+			"color: " + explorerSelectFg + "; }"
+			"QListWidget::item:hover { background: " + explorerSelectBg + "; "
+			"color: " + explorerSelectFg + "; }"
+		)
+		self.explorer.listWidget.setStyleSheet(listQss)
+		self.explorer.listWidget.viewport().setStyleSheet("background: " + explorerBg + ";")
+		self.explorer.header.update()
+		self.statusBarWidget.update()
+		self.editor.notifyChanged()
 
 	def closeEvent(self, event):
 		unsaved = [b.name for b in self.editor.buffers if b.modified]
@@ -169,6 +193,15 @@ if __name__ == "__main__":
 	app.setFont(appFont)
 	app.setStyleSheet(loadQtTheme("quiver"))
 	window = MainWindow(appFont)
+	savedTheme = window.editor.settings.get("theme", "quiver")
+	try:
+		import importlib
+		themeModule = importlib.import_module(f"themes.{savedTheme}")
+		from frontend.qt.amigaPalette import applyThemeToQt
+		applyThemeToQt(themeModule.THEME)
+		window.applyQtTheme(themeModule.THEME)
+	except Exception:
+		pass
 	window.show()
 	window.editor.resize(window.width(), window.height())
 	sys.exit(app.exec())

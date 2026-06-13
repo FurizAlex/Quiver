@@ -19,17 +19,16 @@ class PaneContainer(QWidget):
 		layout.setSpacing(0)
 
 		self.splitter = QSplitter(Qt.Orientation.Horizontal)
-		self.splitter.setHandleWidth(8)
+		self.splitter.setHandleWidth(0)
 		layout.addWidget(self.splitter)
 
 		editor.signals.panesChanged.connect(self.rebuildPanes)
 		self.rebuildPanes()
 
 	def rebuildPanes(self):
-		while self.splitter.count():
-			widget = self.splitter.widget(0)
-			self.splitter.removeWidget(widget)
-			widget.deleteLater()
+		for view in self.paneViews:
+			view.setParent(None)
+			view.deleteLater()
 		self.paneViews.clear()
 
 		from frontend.qt.editorView import PaneView

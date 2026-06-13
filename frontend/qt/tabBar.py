@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontMetrics, QPainter, QColor
+from frontend.qt.amigaPalette import getColor
 
 class TabBar(QWidget):
 	def __init__(self, editor, font: QFont):
@@ -17,7 +18,12 @@ class TabBar(QWidget):
 		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
 
-		painter.fillRect(self.rect(), QColor("#000033"))
+		tabBg		= getColor("TAB_BG")
+		tabFg		= getColor("TAB_FG")
+		activeBg	= getColor("TAB_ACTIVE_BG")
+		activeFg	= getColor("TAB_ACTIVE_FG")
+
+		painter.fillRect(self.rect(), QColor(tabBg))
 		self.tabRects = []
 
 		x = 4
@@ -30,11 +36,11 @@ class TabBar(QWidget):
 			tabHeight = self.height()
 
 			if isActive:
-				painter.fillRect(x, 0, tabWidth, tabHeight, QColor("#0000AA"))
-				painter.setPen(QColor("#FFFFFF"))
+				painter.fillRect(x, 0, tabWidth, tabHeight, QColor(activeBg))
+				painter.setPen(QColor(activeFg))
 			else:
-				painter.fillRect(x, 2, tabWidth, tabHeight - 2, QColor("#000055"))
-				painter.setPen(QColor("#AAAAAA"))
+				painter.fillRect(x, 2, tabWidth, tabHeight - 2, QColor(tabBg))
+				painter.setPen(QColor(tabFg))
 			painter.drawText(x + 8, metrics.ascent() + 4, name)
 			self.tabRects.append((x, tabWidth, i))
 			x += tabWidth + 2

@@ -1,92 +1,26 @@
 THEME = {
-	# METADATA
-    "meta": {
-        "name": "Green CRT",
-        "author": "FurizAlex",
-        "version": "1.0"
-    },
-
-    "defaults": {
-        "fg": "white",
-        "bg": "green"
-    },
-
-    "text": {},
-
-    "keyword": {
-        "fg": "grey",
-        "bold": True
-    },
-
-    "string": {
-        "fg": "yellow"
-    },
-
-    "comment": {
-        "fg": "green"
-    },
-
-    "cursorline": {
-        "dim": False
-    },
-
-    "selection": {
-        "reverse": True
-    },
-
-    "lineNumber": {
-        "fg": "green",
-        "dim": True
-    },
-
-    "currentLineNumber": {
-        "fg": "white",
-        "bold": True
-    },
-
-    "statusBar": {
-        "reverse": True
-    },
-
-    "tab": {},
-
-    "activeTab": {
-        "reverse": True
-    },
-
-    "explorerTitle": {
-        "bold": True
-    },
-
-    "explorerItem": {},
-
-    "explorerSelection": {
-        "reverse": True
-    },
-
-    "paletteBorder": {
-        "fg": "cyan"
-    },
-
-    "paletteTitle": {
-        "bold": True
-    },
-
-    "paletteItem": {},
-
-    "paletteSelection": {
-        "reverse": True
-    },
-
-    "splitter": {
-        "dim": True
-    },
-
-    "activeSplitter": {
-        "bold": True
-    },
-
-    "searchBar": {
-        "reverse": True
-    }
+    "meta": {"name": "Green CRT", "author": "FurizAlex"},
+    "defaults":          {"fg": "green",   "bg": "black"},
+    "text":              {"fg": "green",   "bg": "black"},
+    "keyword":           {"fg": "white",   "bg": "black", "bold": True},
+    "string":            {"fg": "green",   "bg": "black", "dim": True},
+    "comment":           {"fg": "green",   "bg": "black", "dim": True},
+    "number":            {"fg": "white",   "bg": "black"},
+    "diagnosticError":   {"fg": "red",     "bg": "black"},
+    "selection":         {"fg": "black",   "bg": "green"},
+    "lineNumber":        {"fg": "green",   "bg": "black", "dim": True},
+    "currentLineNumber": {"fg": "white",   "bg": "black"},
+    "statusBar":         {"fg": "black",   "bg": "green"},
+    "tab":               {"fg": "green",   "bg": "black"},
+    "activeTab":         {"fg": "black",   "bg": "green", "bold": True},
+    "explorerTitle":     {"fg": "white",   "bg": "black", "bold": True},
+    "explorerItem":      {"fg": "green",   "bg": "black"},
+    "explorerSelection": {"fg": "black",   "bg": "green"},
+    "paletteBorder":     {"fg": "green",   "bg": "black"},
+    "paletteTitle":      {"fg": "white",   "bg": "black", "bold": True},
+    "paletteItem":       {"fg": "green",   "bg": "black"},
+    "paletteSelection":  {"fg": "black",   "bg": "green"},
+    "searchBar":         {"fg": "black",   "bg": "green"},
+    "splitter":          {"fg": "green",   "bg": "black"},
+    "activeSplitter":    {"fg": "white",   "bg": "black"},
 }

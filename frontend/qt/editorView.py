@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QTextEdit
 
 from frontend.qt.paneContainer import PaneContainer
 from frontend.qt.overlay import OverlayWidget
-from frontend.qt.amigaPalette import *
+from frontend.qt.amigaPalette import getColor
 from frontend.qt.qtTranslator import translateKey
 from syntax.lexer import Lexer
 
@@ -17,9 +17,6 @@ class EditorView(QWidget):
 		self.editorFont = font
 		self.setFont(font)
 		self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-		self.setFont(self.editorFont)
-
 		self.paneContainer = PaneContainer(editor, self.editorFont)
 
 		layout = QVBoxLayout(self)
@@ -62,17 +59,21 @@ class PaneView(QWidget):
 		editor.signals.changed.connect(self.update)
 
 	def paintEvent(self, event):
-		painter = QPainter(self)
-		painter.setFont(self.font)
-		self.drawBackground(painter)
-		self.drawCurrentLine(painter)
-		self.drawSelection(painter)
-		self.drawText(painter)
-		self.drawGutter(painter)
-		self.drawCursor(painter)
+		try:
+			painter = QPainter(self)
+			painter.setFont(self.font)
+			self.drawBackground(painter)
+			self.drawCurrentLine(painter)
+			self.drawSelection(painter)
+			self.drawText(painter)
+			self.drawGutter(painter)
+			self.drawCursor(painter)
+		except Exception:
+			import traceback
+			traceback.print_exc()
 
 	def drawBackground(self, painter):
-		painter.fillRect(self.rect(), QColor(BACKGROUND))
+		painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
 
 	def drawGutter(self, painter):
 		painter.setFont(self.font)
@@ -80,7 +81,7 @@ class PaneView(QWidget):
 		lineHeight = metrics.height()
 		pane = self.pane
 
-		painter.fillRect(0, 0, self.gutterWidth, self.height(), QColor(GUTTER))
+		painter.fillRect(0, 0, self.gutterWidth, self.height(), QColor(getColor("GUTTER")))
 
 		visibleCount = self.height() // lineHeight + 1
 		for i in range(visibleCount):
@@ -88,7 +89,7 @@ class PaneView(QWidget):
 			if bufferY >= len(pane.buffer.lines):
 				break
 			isCurrent = (bufferY == pane.cursorY)
-			painter.setPen(QColor("#FFFFFF") if isCurrent else QColor(COMMENT))
+			painter.setPen(QColor("#FFFFFF") if isCurrent else QColor(getColor("COMMENT")))
 			text = str(bufferY + 1)
 			textWidth = metrics.horizontalAdvance(text)
 			x = self.gutterWidth - textWidth - 10
@@ -129,7 +130,7 @@ class PaneView(QWidget):
 		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
 		isCurrentLine = (lineNumber == self.pane.cursorY)
-		painter.setPen(QColor("#FFFFFF") if isCurrentLine else QColor(COMMENT))
+		painter.setPen(QColor("#FFFFFF") if isCurrentLine else QColor(getColor("CURRENT_LINE")))
 		text = str(lineNumber + 1).rjust(4)
 		painter.drawText(self.gutterWidth - metrics.horizontalAdvance("9999") - 4, y + metrics.ascent(), text)
 
@@ -145,12 +146,12 @@ class PaneView(QWidget):
 			return
 		y = visibleY * lineHeight
 		x = self.gutterWidth + 8 + (pane.cursorX - pane.scrollX) * charWidth
-		painter.fillRect(x, y, charWidth, lineHeight, QColor(CURSOR))
+		painter.fillRect(x, y, charWidth, lineHeight, QColor(getColor("CURSOR")))
 		try:
 			ch = pane.buffer.lines[pane.cursorY][pane.cursorX]
 		except IndexError:
 			ch = " "
-		painter.setPen(QColor(BACKGROUND))
+		painter.setPen(QColor(getColor("BACKGROUND")))
 		painter.drawText(x, y + metrics.ascent(), ch)
 
 	def drawCurrentLine(self, painter):
@@ -160,7 +161,7 @@ class PaneView(QWidget):
 		if visibleY < 0:
 			return
 		y = visibleY * lineHeight
-		painter.fillRect(self.gutterWidth + 1, y, self.width() - self.gutterWidth - 1, lineHeight, QColor(CURRENT_LINE))
+		painter.fillRect(self.gutterWidth + 1, y, self.width() - self.gutterWidth - 1, lineHeight, QColor(getColor("CURRENT_LINE")))
 
 	def drawSelection(self, painter):
 		pane = self.pane
@@ -187,16 +188,17 @@ class PaneView(QWidget):
 					endCol = startCol
 			x = self.gutterWidth + 8 + (startCol - pane.scrollX) * charWidth
 			w = (endCol - startCol) * charWidth
-			painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, QColor(SELECTION))
+			painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, QColor(getColor("SELECTION")))
 
 	def tokenColor(self, tokenType):
-		colors = {
-			"keyword": KEYWORD,
-			"string": STRING,
-			"comment": COMMENT,
-			"text": TEXT,
+		mapping = {
+			"keyword": "KEYWORD",
+			"string": "STRING",
+			"comment": "COMMENT",
+			"text": "TEXT",
+			"number": "NUMBER",
 		}
-		return QColor(colors.get(tokenType, TEXT))
+		return QColor(getColor(mapping.get(tokenType, "TEXT")))
 
 	def keyPressEvent(self, event):
 		self.editor.activePane = self.paneIndex
@@ -217,6 +219,14 @@ class PaneView(QWidget):
 		self.editor.updateScroll()
 		self.editor.notifyChanged()
 		self.cursorChanged.emit(row + 1, col + 1)
+
+	def mouseMoveEvent(self, event):
+		if getattr(self, "dragging", False):
+			row, col = self.pixelToRowCol(event.position().x(), event.position().y())
+			self.editor.selection.update(col, row)
+			self.pane.cursorX = col
+			self.pane.cursorY = row
+			self.editor.notifyChanged()
 
 	def mouseReleaseEvent(self, event):
 		self.dragging = False

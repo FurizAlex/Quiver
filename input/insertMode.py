@@ -134,20 +134,33 @@ def handle(editor, event):
 					createNewBuffer(editor)
 				else:
 					newFile(editor)
+			case "LEFT":
+				moveWordLeft(buffer, pane)
+				selection.clear()
+				editor.notifyChanged()
+			case "RIGHT":
+				moveWordRight(buffer, pane)
+				selection.clear()
+				editor.notifyChanged()
 			case "BACKSPACE":
 				saveUndo(editor)
 				line = buffer.lines[pane.cursorY]
 				x = pane.cursorX
 				if x == 0:
-					pass
+					if pane.cursorY > 0:
+						prev = len(buffer.lines[pane.cursorY - 1])
+						buffer.mergeLine(pane.cursorY)
+						pane.cursorY -= 1
+						pane.cursorX = prev
 				else:
 					i = x
-					while i > 0 and line[i - 1] == " ":
+					while i > 0 and line[i - 1] in "\t":
 						i -= 1
-					while i > 0 and line[i - 1] != " ":
+					while i > 0 and line[i - 1] not in " \t":
 						i -= 1
 					buffer.lines[pane.cursorY] = line[:i] + line[x:]
 					pane.cursorX = i
+				editor.notifyChanged()
 			case "A":
 				selection.begin(0, 0)
 				lastLine = len(buffer.lines) - 1
@@ -176,6 +189,32 @@ def handle(editor, event):
 				pass
 		editor.notifyChanged()
 		return
+	if event.shift and not event.ctrl:
+		matched = False
+		match key:
+			case "LEFT":
+				startOrUpdateSelection(editor)
+				moveLeft(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+				matched = True
+			case "RIGHT":
+				startOrUpdateSelection(editor)
+				moveRight(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+				matched = True
+			case "UP":
+				startOrUpdateSelection(editor)
+				moveUp(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+				matched = True
+			case "DOWN":
+				startOrUpdateSelection(editor)
+				moveDown(buffer, pane)
+				selection.update(pane.cursorX, pane.cursorY)
+				matched = True
+		if matched:
+			editor.notifyChanged()
+			return
 	elif key == "TAB":
 		if selection.active:
 			saveUndo(editor)

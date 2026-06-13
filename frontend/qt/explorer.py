@@ -4,6 +4,8 @@ from PyQt6.QtWidgets import QWidget, QListWidget, QListWidgetItem, QVBoxLayout, 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontMetrics, QPainter, QColor
 
+from frontend.qt.amigaPalette import getColor
+
 class ExplorerHeader(QWidget):
 	def __init__(self, editor, font: QFont):
 		super().__init__()
@@ -19,7 +21,12 @@ class ExplorerHeader(QWidget):
 		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
 
-		painter.fillRect(self.rect(), QColor("#0000AA"))
+		explorerBg = getColor("EXPLORER_BG")
+		explorerFg = getColor("EXPLORER_FG")
+		selectBg = getColor("EXPLORER_SELECT_BG")
+		selectFg = getColor("EXPLORER_SELECT_FG")
+
+		painter.fillRect(self.rect(), QColor(explorerBg))
 		buffer = self.editor.pane.buffer
 		name = buffer.name.upper()
 		if buffer.modified:
@@ -27,11 +34,11 @@ class ExplorerHeader(QWidget):
 
 		textWidth = metrics.horizontalAdvance(name)
 		boxX, boxY = 4, 2
-		painter.fillRect(boxX, boxY, textWidth + 8, self.rowHeight - 4, QColor("#FFFFFF"))
-		painter.setPen(QColor("#0000AA"))
+		painter.fillRect(boxX, boxY, textWidth + 8, self.rowHeight - 4, QColor(selectBg))
+		painter.setPen(QColor(selectFg))
 		painter.drawText(boxX + 4, boxY + metrics.ascent(), name)
 
-		painter.setPen(QColor("#FFFFFF"))
+		painter.setPen(QColor(explorerFg))
 		painter.drawText(6, self.rowHeight + metrics.ascent() + 2, "FILES")
 
 class Explorer(QWidget):
@@ -76,7 +83,32 @@ class Explorer(QWidget):
 		layout.addWidget(self.listWidget, stretch=1)
 
 		editor.signals.changed.connect(self.syncVisibility)
+		editor.signals.changed.connect(self.updateStyle)
+		self.updateStyle()
 		self.syncVisibility()
+
+	def updateStyle(self):
+		explorerBg = getColor("EXPLORER_BG")
+		explorerFg = getColor("EXPLORER_FG")
+		selectBg   = getColor("EXPLORER_SELECT_BG")
+		selectFg   = getColor("EXPLORER_SELECT_FG")
+		self.backButton.setStyleSheet(
+		    "QPushButton { background: " + explorerBg + "; color: " + explorerFg + "; "
+		    "border: none; border-bottom: 1px solid " + selectBg + "; "
+		    "text-align: left; padding-left: 6px; }"
+		    "QPushButton:hover { background: " + selectBg + "; color: " + selectFg + "; }"
+		)
+		self.listWidget.setStyleSheet(
+		    "QListWidget { background: " + explorerBg + "; color: " + explorerFg + "; "
+		    "border: none; outline: none; }"
+		    "QListWidget::item { background: " + explorerBg + "; color: " + explorerFg + "; "
+		    "padding: 1px 4px; }"
+		    "QListWidget::item:selected { background: " + selectBg + "; color: " + selectFg + "; }"
+		    "QListWidget::item:hover { background: " + selectBg + "; color: " + selectFg + "; }"
+		)
+		self.listWidget.viewport().setStyleSheet(
+		    "background: " + explorerBg + ";"
+		)
 
 	def syncVisibility(self):
 		self.setVisible(self.editor.showExplorer)

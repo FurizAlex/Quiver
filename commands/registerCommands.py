@@ -20,14 +20,6 @@ def registerCommands(registry):
 	registry.register("next_pane", nextPane, "Next Pane", "View")
 	registry.register("toggle_explorer", toggleExplorer, "Toggle Explorer", "View")
 	registry.register("next_diagnostic", nextDiagnostic, "Next Diagnostic", "Diagnostics")
-	registry.register("undo", undo, "Undo", "Edit")
-	registry.register("redo", redo, "Redo", "Edit")
-
-	def quitEditor(editor):
-		editor.saveConfig()
-		editor.running = False
-
-	registry.register("quit", quitEditor, "Quit", "File")
 
 	def listThemes(editor):
 		themes = editor.theme.availableThemes()
@@ -42,3 +34,14 @@ def registerCommands(registry):
 		editor.notifyChanged()
 	
 	registry.register("select_theme", listThemes, "Select Theme", "Settings")
+	
+	def quitEditor(editor):
+		editor.saveConfig()
+		editor.running = False
+		try:
+			from PyQt6.QtWidgets import QApplication
+			QApplication.quit()
+		except Exception:
+			pass
+
+	registry.register("quit", quitEditor, "Quit", "File")

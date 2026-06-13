@@ -2,7 +2,7 @@ DEFAULT_SETTINGS = {
 	"tab_width": 4,
 	"use_tabs": True,
 
-	"theme": "amiga",
+	"theme": "quiver",
 
 	"line_numbers": True,
 	"relative_numbers": False,

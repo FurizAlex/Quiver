@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QPainter
+from frontend.qt.amigaPalette import getColor
 
 class StatusBar(QWidget):
 	def __init__(self, font: QFont, parent=None):
@@ -28,8 +29,8 @@ class StatusBar(QWidget):
 
 	def paintEvent(self, event):
 		painter = QPainter(self)
-		painter.fillRect(self.rect(), QColor("#0000AA"))
-		painter.setPen(QColor("#FFFFFF"))
+		painter.fillRect(self.rect(), QColor(getColor("STATUS_BG")))
+		painter.setPen(QColor(getColor("STATUS_FG")))
 		painter.drawLine(0, 0, self.width(), 0)
 
 	def updateState(self, editor):
@@ -37,6 +38,9 @@ class StatusBar(QWidget):
 		filename = buffer.filename or "[NO FILE]"
 		diagosticCount = buffer.diagnostics.count() if hasattr(buffer, "diagnostics") else 0
 		status = editor.status or ""
+		fg = getColor("STATUS_FG")
+		for label in (self.leftLabel, self.rightLabel):
+			label.setStyleSheet(f"background: transparent; color: {fg};")
 		if status.startswith("KEY=") or status.startswith("'"):
 			status = ""
 		if editor.saving:

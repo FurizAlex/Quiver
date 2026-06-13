@@ -2,16 +2,6 @@ import os
 import curses
 from commands.fileCommands import openFileBuffer
 
-def fuzzyMatch(query, text):
-	query = query.lower()
-	text = text.lower()
-	i = 0
-
-	for ch in text:
-		if i < len(query) and ch == query[i]:
-			i += 1
-	return i == len(query)
-
 def execute(editor):
 	items = filtered(editor)
 
@@ -26,7 +16,6 @@ def execute(editor):
 	editor.paletteOpen = False
 
 def handle(editor, event):
-	items = filtered(editor)
 	key = event.key
 
 	if key == "ESC":
@@ -35,16 +24,16 @@ def handle(editor, event):
 		editor.paletteMode = "commands"
 		editor.notifyChanged()
 		return
-	elif key == "UP":
+	if key == "UP":
 		editor.paletteSelection = max(0, editor.paletteSelection - 1)
 		editor.notifyChanged()
 		return
-	elif key == "DOWN":
+	if key == "DOWN":
 		items = filtered(editor)
 		editor.paletteSelection = min(len(items) - 1, editor.paletteSelection + 1)
 		editor.notifyChanged()
 		return
-	elif key == "ENTER":
+	if key == "ENTER":
 		items = filtered(editor)
 		if not items:
 			return
@@ -69,7 +58,6 @@ def handle(editor, event):
 			editor.notifyChanged()
 			return
 		elif editor.paletteMode == "commands":
-			command = select.get("command")
 			if command:
 				editor.paletteOpen = False
 				editor.paletteInput = ""
@@ -81,7 +69,7 @@ def handle(editor, event):
 		editor.paletteInput = ""
 		editor.notifyChanged()
 		return
-	elif key == "BACKSPACE":
+	if key == "BACKSPACE":
 		if editor.paletteInput:
 			editor.paletteInput = editor.paletteInput[:-1]
 		elif editor.paletteMode == "files":
@@ -93,7 +81,7 @@ def handle(editor, event):
 		editor.paletteSelection = 0
 		editor.notifyChanged()
 		return
-	elif len(key) == 1 and not event.ctrl and not event.alt:
+	if len(key) == 1 and not event.ctrl:
 		editor.paletteInput += key
 		editor.paletteSelection = 0
 		editor.notifyChanged()
@@ -115,17 +103,26 @@ def fuzzy(query, text):
 	return it == len(query)
 
 def applyTheme(editor, themeId):
+	import importlib
 	try:
-		editor.settings.set("theme", themeId)
-		editor.currentTheme = themeId
-	except Exception as e:
-		editor.status = f"Theme error: {e}"
+		module = importlib.import_module(f"themes.{themeId}")
+	except ModuleNotFoundError:
+		editor.status = f"Theme error: {themeId}"
 		editor.statusTimer = 120
+		return
+	editor.theme.load(themeId)
+	editor.currentTheme = themeId
+	if hasattr(editor, "stdscr") and editor.stdscr is not None:
+		editor.theme.initialize()
 	if hasattr(editor, "signals"):
-		import importlib
-		themeModule = importlib.import_module(f"themes.{themeId}")
 		from frontend.qt.amigaPalette import applyThemeToQt
-		applyThemeToQt(themeModule.THEME)
+		applyThemeToQt(module.THEME)
+		if hasattr(editor, "qtWindow"):
+			editor.qtWindow.applyQtTheme(module.THEME)
+	editor.settings.set("theme", themeId)
+	editor.status = f"Theme: {editor.theme.metadata.get('name', themeId)}"
+	editor.statusTimer = 120
+	editor.notifyChanged()
 
 def openCommandPalette(editor):
 	editor.paletteOpen = True

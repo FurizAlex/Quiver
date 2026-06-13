@@ -8,7 +8,7 @@ def handle(editor, event):
 		editor.gotoInput = ""
 		editor.status = ""
 		return
-	elif key == "ENTER":
+	if key == "ENTER":
 		try:
 			line = int(editor.gotoInput.strip())
 			index = max(0, min(line - 1, len(editor.pane.buffer.lines) - 1))
@@ -24,7 +24,7 @@ def handle(editor, event):
 		editor.gotoInput = ""
 		editor.notifyChanged()
 		return
-	elif key == "BACKSPACE":
+	if key == "BACKSPACE":
 		editor.gotoInput = editor.gotoInput[:-1]
 	elif len(key) == 1 and key.isdigit():
 		editor.gotoInput += key

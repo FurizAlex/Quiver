@@ -4,8 +4,8 @@ class Settings:
 	def __init__(self):
 		self.values = DEFAULT_SETTINGS.copy()
 
-	def get(self, key):
-		return self.values.get(key)
+	def get(self, key, default=None):
+		return self.values.get(key, default)
 
 	def set(self, key, value):
 		self.values[key] = value
