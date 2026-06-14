@@ -26,6 +26,8 @@ class Renderer(RendererBase):
 			self.drawPane(editor, paneIndex, pane)
 		
 		self.drawStatusbar(editor)
+		if editor.completionActive and editor.completions:
+			self.drawCompletion(editor)
 		if editor.paletteOpen:
 			self.drawPalette(editor)
 		if editor.searchMode:
@@ -301,6 +303,32 @@ class Renderer(RendererBase):
 			except curses.error:
 				pass
 			x += len(title) + 1
+
+	def drawCompletion(self, editor):
+		h, w = self.stdscr.getmaxyx()
+		pane = editor.pane
+
+		from ui.coordinates import bufferToScreen
+		screenX, screenY = bufferToScreen(editor, editor.activePane, pane.cursorX, pane.cursorY)
+		completions = editor.completions
+		boxWidth = max(len(c) for c in completions) + 4
+		boxHeight = len(completions)
+
+		boxX = screenX
+		boxY = screenY + 1
+		if boxX + boxWidth >= w:
+			boxX = w - boxWidth - 1
+		if boxY + boxHeight >= h - 2:
+			boxY = screenY - boxHeight
+		for i, word in enumerate(completions):
+			if boxY + i < 1 or boxY + i >= h - 2:
+				continue
+			if i == editor.completionIndex:
+				attr = editor.theme.get("paletteSelection")
+			else:
+				attr = editor.theme.get("paletteItem")
+			display = f" {word:<{boxWidth - 2}} "
+			self.safeAddstr(boxY + i, boxX, display[:boxWidth], attr)
 
 	def drawStatusbar(self, editor):
 		h, w = self.stdscr.getmaxyx()

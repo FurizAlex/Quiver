@@ -35,12 +35,22 @@ class StatusBar(QWidget):
 
 	def updateState(self, editor):
 		buffer = editor.pane.buffer
+		foreground = getColor("STATUS_FG")
 		filename = buffer.filename or "[NO FILE]"
 		diagosticCount = buffer.diagnostics.count() if hasattr(buffer, "diagnostics") else 0
 		status = editor.status or ""
-		#fg = getColor("STATUS_FG")
-		#for label in (self.leftLabel, self.rightLabel):
-		#	label.setStyleSheet(f"background: transparent; color: {fg};")
+		for label in (self.leftLabel, self.rightLabel):
+			label.setStyleSheet(f"background: transparent; color: {foreground};")
+		select = editor.selection
+		selectInfo = ""
+		if select.active:
+			n = select.normalized()
+			if n["sy"] == n["ey"]:
+				chars = n["ex"] - n["sx"]
+				selectInfo = f"  |  SEL {chars}ch"
+			else:
+				lines = n["ey"] - n["sy"] + 1
+				selectInfo = f"  |  SEL {lines}ln"
 		if status.startswith("KEY=") or status.startswith("'"):
 			status = ""
 		if editor.saving:
@@ -53,15 +63,17 @@ class StatusBar(QWidget):
 				f"Diag {diagosticCount} | "
 				f"Ln {editor.pane.cursorY + 1} | "
 				f"Col {editor.pane.cursorX + 1} | "
-				f"{languageName} | "
+				f"{languageName}"
+				f"{selectInfo}"
 			)
 			if status:
 				left += f"  |  {status}"
-		right = (
-			"^S Save  "
-			"^O Open  "
-			"^P Commands  "
-			"^N Next"
-		)
+		if not hasattr(editor, "signals"):
+			if editor.focus == "explorer":
+				right = "↑↓ Navigate  ENTER Open  BKSP Back  TAB Editor"
+			else:
+				right = "^S Save  ^O Open  ^P Commands  ^N Next"
+		else:
+			right = "^S Save  ^O Open  ^P Commands  ^N Next  ^E Explorer"
 		self.leftLabel.setText(left)
 		self.rightLabel.setText(right)

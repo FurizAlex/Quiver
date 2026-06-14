@@ -75,6 +75,12 @@ class Editor:
 		from core.documentManager import DocumentManager
 		self.documents = DocumentManager(self, self.languageRegistry)
 
+		from core.completion import CompletionEngine
+		self.completion = CompletionEngine()
+		self.completions = []
+		self.completionIndex = 0
+		self.completionActive = False
+		
 		self.panes = [Pane(self.documents.active)]
 		self.activePane = 0
 

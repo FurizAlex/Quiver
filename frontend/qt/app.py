@@ -66,7 +66,8 @@ class BorderOverlay(QWidget):
 class TitleBar(QWidget):
 	def __init__(self, title: str, font: QFont, parent=None):
 		super().__init__(parent)
-		self.setFixedHeight(QFontMetrics(font).height() + 10)
+		self.dragPosition = None
+		self.setFixedHeight(QFontMetrics(font).height() + 14)
 
 		layout = QHBoxLayout(self)
 		layout.setContentsMargins(8, 0, 4, 0)
@@ -89,9 +90,23 @@ class TitleBar(QWidget):
 		layout.addWidget(self.buttonClose)
 		layout.addSpacing(4)
 
+	def mousePressEvent(self, event):
+		if event.button() == Qt.MouseButton.LeftButton:
+			self.dragPosition = event.globalPosition().toPoint() - self.window().frameGeometry().topLeft()
+		event.accept()
+
+	def mouseMoveEvent(self, event):
+		if self.dragPosition is not None and event.buttons() & Qt.MouseButton.LeftButton:
+			self.window().move(event.globalPosition().toPoint() - self.dragPosition)
+		event.accept()
+
+	def mouseReleaseEvent(self, event):
+		self.dragPosition = None
+		event.accept()
+
 	def makeButton(self, color: str, slot) -> QPushButton:
 		button = QPushButton()
-		button.setFixedSize(14, 14)
+		button.setFixedSize(20, 20)
 		button.setStyleSheet(
 			f"QPushButton {{ background: {color}; border: 1px solid white; }}"
 			f"QPushButton:hover {{ background: white; }}"
@@ -121,11 +136,13 @@ class TitleBar(QWidget):
 
 	def mouseDoubleClickEvent(self, event):
 		self.maximize()
+		event.accept()
 
 class QuiverDialog(QDialog):
-	def __init__(self, title: str, message: str, font: QFont, parent=None):
+	def __init__(self, title: str, message: str, font: QFont, parent=None, showSave: bool = False):
 		super().__init__(parent, Qt.WindowType.FramelessWindowHint)
 		self.setModal(True)
+		self.outcome = "no"
 		self.setStyleSheet("background: black;")
 
 		from frontend.qt.amigaPalette import getColor
@@ -154,29 +171,29 @@ class QuiverDialog(QDialog):
 
 		buttonRow = QHBoxLayout()
 		buttonRow.setSpacing(8)
+		buttonRow.addStretch()
 
-		self.buttonYes = QPushButton("YES")
-		self.buttonNo = QPushButton("No")
-		for button in (self.buttonYes, self.buttonNo):
+		def makeButton(text, foreground, background, callback):
+			button = QPushButton(text)
 			button.setFont(font)
 			button.setFixedHeight(font.pointSize() * 3)
 			button.setMinimumWidth(80)
+			button.setStyleSheet(
+				f"QPushButton {{ background: {background}; color: {foreground}; border: none; }}"
+				f"QPushButton:hover {{ background: {paletteFg}; color: {paletteBg}; }}"
+			)
+			button.clicked.connect(callback)
+			return button
 
-		self.buttonYes.setStyleSheet(
-			f"QPushButton {{ background: {paletteFg}; color: {paletteBg}; border: none; }}"
-			f"QPushButton:hover {{ background: {titleFg}; color: {paletteBg}; }}"
-		)
-		self.buttonNo.setStyleSheet(
-			f"QPushButton {{ background: transparent; color: {paletteFg}; "
-			f"border: 1px solid {paletteFg}; }}"
-			f"QPushButton:hover {{ background: {paletteFg}; color: {paletteBg}; }}"
-		)
-		self.buttonYes.clicked.connect(self.yes)
-		self.buttonNo.clicked.connect(self.no)
+		buttonNo	= makeButton("NO", paletteBg, paletteFg, self.no)
+		buttonYes	= makeButton("YES", paletteBg, paletteFg, self.yes)
+		buttonRow.addWidget(buttonNo)
 
-		buttonRow.addStretch()
-		buttonRow.addWidget(self.buttonNo)
-		buttonRow.addWidget(self.buttonYes)
+		if showSave:
+			buttonSave = makeButton("YES & SAVE", paletteBg, titleFg, self.save)
+			buttonRow.addWidget(buttonSave)
+		
+		buttonRow.addWidget(buttonYes)
 
 		boxLayout.addWidget(titleLabel)
 		boxLayout.addWidget(msgLabel)
@@ -184,20 +201,24 @@ class QuiverDialog(QDialog):
 		boxLayout.addLayout(buttonRow)
 		outer.addWidget(box)
 
-		self.setFixedWidth(400)
+		self.setFixedWidth(440)
 		self.adjustSize()
 	
 	def yes(self):
-		self.result = True
-		self.close()
+		self.outcome = "yes"
+		self.accept()
 
 	def no(self):
-		self.result = False
-		self.close()
+		self.outcome = "no"
+		self.reject()
+
+	def save(self):
+		self.outcome = "save"
+		self.accept()
 
 	@staticmethod
-	def ask(title: str, message: str, font: QFont, parent=None):
-		dialog = QuiverDialog(title, message, font, parent)
+	def ask(title: str, message: str, font: QFont, parent=None, showSave=False):
+		dialog = QuiverDialog(title, message, font, parent, showSave)
 		if parent:
 			geo = parent.geometry()
 			dialog.move(
@@ -205,13 +226,12 @@ class QuiverDialog(QDialog):
 				geo.y() + (geo.height() - dialog.height()) // 2
 			)
 		dialog.exec()
-		return dialog.result
+		return dialog.outcome
 
 class MainWindow(QMainWindow):
 	CONTENT_MARGIN = BorderOverlay.MARGIN + 2
 	def __init__(self, appFont: QFont):
 		super().__init__()
-		self.dragPosition = None
 		self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 		self.editor = EditorQt()
 		self.editor.qtWindow = self
@@ -264,22 +284,6 @@ class MainWindow(QMainWindow):
 
 		self.statusBarWidget.updateState(self.editor)
 		self.views.setFocus()
-	
-	def mousePressEvent(self, event):
-		if event.button() == Qt.MouseButton.LeftButton:
-			titleBarBottom = self.titleBar.mapTo(self, self.titleBar.rect().bottomLeft()).y()
-			if event.position().y() <= titleBarBottom:
-				self.dragPosition = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-		super().mousePressEvent(event)
-
-	def mouseMoveEvent(self, event):
-		if self.dragPosition is not None and event.buttons() == Qt.MouseButton.LeftButton:
-			self.move(event.globalPosition().toPoint() - self.dragPosition)
-		super().mouseMoveEvent(event)
-
-	def mouseReleaseEvent(self, event):
-		self.dragPosition = None
-		super().mouseReleaseEvent(event)
 
 	def applyQtTheme(self, themeDef: dict):
 		from frontend.qt.amigaPalette import getColor
@@ -305,16 +309,28 @@ class MainWindow(QMainWindow):
 		self.editor.notifyChanged()
 
 	def closeEvent(self, event):
-		unsaved = [b.name for b in self.editor.buffers if b.modified]
+		unsaved = [b for b in self.editor.buffers if b.modified]
 		if unsaved:
-			names = ", ".join(unsaved)
-			if not QuiverDialog.ask(
+			names = ", ".join(b.name for b in unsaved)
+			outcome = QuiverDialog.ask(
 				"UNSAVED CHANGES",
 				f"Wait! You haven't saved on\n{names}\n\nWould you still like to quit?",
-				self.appFont, self
-			):
+				self.appFont, self,
+				showSave=True
+			)
+			if outcome == "no":
 				event.ignore()
 				return
+			if outcome == "save":
+				from commands.fileCommands import save
+				for buffer in unsaved:
+					if buffer.filename:
+						from util.fileio import saveFile
+						saveFile(buffer.filename, buffer.lines)
+						buffer.modified = False
+					else:
+						self.editor.pane.buffer = buffer
+						save(self.editor)
 		event.accept()
 
 	def resizeEvent(self, event):
@@ -331,22 +347,21 @@ class MainWindow(QMainWindow):
 
 	def newFileQt(self):
 		if self.pane.buffer.modified:
-			from PyQt6.QtWidgets import QMessageBox
-			reply = QMessageBox.question(
-			None, "UNSAVED CHANGES", f"'{self.pane.buffer.name}' has unsaved changes. Would you like to create a new file anyway?",
-			QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-			QMessageBox.StandardButton.No
+			outcome = QuiverDialog.ask(
+			"UNSAVED CHANGES",
+			f"'{self.pane.buffer.name}' has unsaved changes. Would you like to create a new file anyway?",
+			self.appFont, self
 		)
-		if reply != QMessageBox.StandardButton.Yes:
+		if outcome != "yes":
 			return
 		from core.buffer import Buffer
 		buffer = Buffer(editor=self, language=self.languageRegistry.get("text"))
-		self.buffers.append(buffer)
-		self.currentBuffer = len(self.buffers) - 1
-		self.pane.buffer = buffer
-		self.pane.cursorX = 0
-		self.pane.cursorY = 0
-		self.notifyChanged()
+		self.editor.buffers.append(buffer)
+		self.editor.currentBuffer = len(self.editor.buffers) - 1
+		self.editor.pane.buffer = buffer
+		self.editor.pane.cursorX = 0
+		self.editor.pane.cursorY = 0
+		self.editor.notifyChanged()
 
 	def focusExplorer(self):
 		if self.explorer.isVisible():

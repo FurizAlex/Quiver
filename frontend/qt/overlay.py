@@ -19,7 +19,7 @@ class OverlayWidget(QWidget):
 		editor.signals.changed.connect(self.update)
 
 	def paintEvent(self, event):
-		if not self.editor.paletteOpen and not self.editor.searchMode:
+		if not self.editor.paletteOpen and not self.editor.searchMode and not self.editor.completionActive:
 			return
 		painter = QPainter(self)
 		painter.setFont(self.font)
@@ -29,6 +29,47 @@ class OverlayWidget(QWidget):
 			self.drawSearch(painter, metrics)
 		if self.editor.paletteOpen:
 			self.drawPalette(painter, metrics)
+		if self.editor.completionActive:
+			self.drawCompletion(painter, metrics)
+
+	def drawCompletion(self, painter, metrics):
+		completions = self.editor.completions
+		if not completions:
+			return
+		rowHeight = metrics.height() + 2
+		boxWidth = max(metrics.horizontalAdvance(c) for c in completions) + 24
+		boxWidth = max(boxWidth, 160)
+		boxHeight = len(completions) * rowHeight + 4
+
+		paletteBg	= getColor("PALETTE_BG")
+		paletteFg	= getColor("PALETTE_FG")
+		selectBg	= getColor("PALETTE_SELECT_BG")
+		selectFg	= getColor("PALETTE_SELECT_FG")
+
+		cursorScreenX = getattr(self.editor, "completionX", 100)
+		cursorScreenY = getattr(self.editor, "completionY", 100)
+
+		boxX = cursorScreenX
+		boxY = cursorScreenY + metrics.height() + 2
+		if boxX + boxWidth > self.width():
+			boxX = self.width() - boxWidth - 4
+		if boxY + boxHeight > self.height():
+			boxY = cursorScreenY - boxHeight - 2
+
+		painter.fillRect(boxX, boxY, boxWidth, boxHeight, QColor(paletteBg))
+		painter.setPen(QColor(paletteFg))
+		painter.drawRect(boxX, boxY, boxWidth - 1, boxHeight - 1)
+
+		cy = boxY + 2
+		for i, word in enumerate(completions):
+			selected = (i == self.editor.completionIndex)
+			if selected:
+				painter.fillRect(boxX + 1, cy, boxWidth - 2, rowHeight, QColor(selectBg))
+				painter.setPen(QColor(selectFg))
+			else:
+				painter.setPen(QColor(paletteFg))
+			painter.drawText(boxX + 8, cy + metrics.ascent(), word)
+			cy += rowHeight
 
 	def drawSearch(self, painter, metrics):
 		rowHeight = metrics.height() + 8

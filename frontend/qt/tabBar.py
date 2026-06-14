@@ -103,10 +103,13 @@ class TabBar(QWidget):
 		buffer = self.editor.buffers[index]
 		if buffer.modified:
 			from frontend.qt.app import QuiverDialog
-			if not QuiverDialog.ask(
+			outcome = QuiverDialog.ask(
 				"UNSAVED CHANGES",
 				f"'{buffer.name}' has unsaved changes. Close anyway?",
-			):
+				self.font,
+				self
+			)
+			if outcome != "yes":
 				return
 		self.editor.buffers.pop(index)
 		self.editor.currentBuffer = min(self.editor.currentBuffer, len(self.editor.buffers) - 1)

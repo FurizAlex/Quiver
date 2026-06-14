@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QSplitter, QPlainTextEdit, QVBoxLayout
 from PyQt6.QtGui import QPainter, QColor, QFontDatabase, QFont, QFontMetrics, QTextFormat
 from PyQt6.QtWidgets import QTextEdit
@@ -8,6 +8,8 @@ from frontend.qt.overlay import OverlayWidget
 from frontend.qt.amigaPalette import getColor
 from frontend.qt.qtTranslator import translateKey
 from syntax.lexer import Lexer
+
+import math
 
 class EditorView(QWidget):
 	cursorChanged = pyqtSignal(int, int)
@@ -48,6 +50,15 @@ class PaneView(QWidget):
 		self.pane = pane
 		self.font = font
 
+		self.cursorAnimX = None
+		self.cursorAnimY = None
+		self.cursorTargetX = 0
+		self.cursorTargetY = 0
+		self.animTimer = QTimer()
+		self.animTimer.setInterval(16)
+		self.animTimer.timeout.connect(self.tickCursorAnim)
+		self.animTimer.start()
+
 		self.paneIndex = paneIndex
 		self.lexer = Lexer()
 
@@ -68,9 +79,38 @@ class PaneView(QWidget):
 			self.drawText(painter)
 			self.drawGutter(painter)
 			self.drawCursor(painter)
+			if self.paneIndex == self.editor.activePane:
+				self.storeCursorScreenPos()
 		except Exception:
 			import traceback
 			traceback.print_exc()
+
+	def cursorPixelPos(self):
+		pane = self.pane
+		metrics = QFontMetrics(self.font)
+		lineHeight = metrics.height()
+		charWidth = metrics.horizontalAdvance("M")
+		visibleY = pane.cursorY - pane.scrollY
+		x = self.gutterWidth + 8 + (pane.cursorX - pane.cursorY) * charWidth
+		y = visibleY * lineHeight
+		return x, y
+	
+	def tickCursorAnim(self):
+		tx, ty = self.cursorPixelPos()
+		if self.cursorAnimX is None:
+			self.cursorAnimX = float(tx)
+			self.cursorAnimY = float(ty)
+			return
+		speed = 0.3
+		dx = tx - self.cursorAnimX
+		dy = ty - self.cursorAnimY
+		if abs(dx) < 0.5 and abs(dy) < 0.5:
+			self.cursorAnimX = float(tx)
+			self.cursorAnimY = float(ty)
+			return
+		self.cursorAnimX += dx * speed
+		self.cursorAnimY += dy * speed
+		self.update()
 
 	def drawBackground(self, painter):
 		painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
@@ -141,11 +181,18 @@ class PaneView(QWidget):
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
+
+		if self.cursorAnimX is None:
+			tx, ty = self.cursorPixelPos()
+			self.cursorAnimX = float(tx)
+			self.cursorAnimY = float(ty)
+		
+		x = int(self.cursorAnimX)
+		y = int(self.cursorAnimY)
+
 		visibleY = pane.cursorY - pane.scrollY
 		if visibleY < 0:
 			return
-		y = visibleY * lineHeight
-		x = self.gutterWidth + 8 + (pane.cursorX - pane.scrollX) * charWidth
 		painter.fillRect(x, y, charWidth, lineHeight, QColor(getColor("CURSOR")))
 		try:
 			ch = pane.buffer.lines[pane.cursorY][pane.cursorX]
@@ -153,6 +200,8 @@ class PaneView(QWidget):
 			ch = " "
 		painter.setPen(QColor(getColor("BACKGROUND")))
 		painter.drawText(x, y + metrics.ascent(), ch)
+		self.editor.completionX = x
+		self.editor.completionY = y
 
 	def drawCurrentLine(self, painter):
 		metrics = QFontMetrics(self.font)
@@ -261,6 +310,26 @@ class PaneView(QWidget):
 			maxScroll = max(0, len(self.pane.buffer.lines) - 1)
 			self.pane.scrollY = min(maxScroll, self.pane.scrollY + lines)
 		self.editor.notifyChanged()
+
+	def storeCursorScreenPos(self):
+		pane = self.pane
+		metrics = QFontMetrics(self.font)
+		lineHeight = metrics.height()
+		charWidth = metrics.horizontalAdvance("M")
+		visibleY = pane.cursorY - pane.scrollY
+		x = self.gutterWidth + 8 + (pane.cursorX - pane.scrollX) * charWidth
+		y = visibleY * lineHeight
+		
+		from PyQt6.QtCore import QPoint
+		globalPoint = self.mapToGlobal(QPoint(x, y))
+		
+		editorView = self.parent()
+		while editorView is not None and not hasattr(editorView, 'overlay'):
+			editorView = editorView.parent()
+		if editorView is not None:
+			localPoint = editorView.mapFromGlobal(globalPoint)
+			self.editor.completionX = localPoint.x()
+			self.editor.completionY = localPoint.y()
 
 	def pixelToRowCol(self, px, py):
 		metrics = QFontMetrics(self.font)
