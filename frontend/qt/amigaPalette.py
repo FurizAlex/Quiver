@@ -15,8 +15,8 @@ palette = {
 	"STATUS_FG"				: "#FFFFFF",
 	"PALETTE_BG"			: "#0000AA",
     "PALETTE_FG"			: "#FFFFFF",
-    "PALETTE_SELECT_BG"		: "#FFFFFF",
-    "PALETTE_SELECT_FG"		: "#0000AA",
+    "PALETTE_SELECT_BG"		: "#0000AA",
+    "PALETTE_SELECT_FG"		: "#FFFFFF",
     "PALETTE_TITLE"			: "#FFFF55",
     "PALETTE_HINT"			: "#AAAAAA",
 	"EXPLORER_BG"			: "#0000AA",
@@ -30,15 +30,17 @@ palette = {
 }
 
 CURSES_TO_HEX = {
-	"black":	"#000000",
-	"red":		"#CC0000",
-	"green":	"#00CC00",
-	"yellow":	"#CCCC00",
-	"blue":		"#0000AA",
-	"magenta":	"#AA00AA",
-	"cyan":		"#00AAAA",
-	"white":	"#FFFFFF",
-	"default":	"#FFFFFF",
+	"black":		"#000000",
+	"red":			"#CC0000",
+	"green":		"#00CC00",
+	"dark green":	"#087000",
+	"yellow":		"#CCCC00",
+	"blue":			"#0000AA",
+	"magenta":		"#AA00AA",
+	"cyan":			"#00AAAA",
+	"white":		"#FFFFFF",
+	"grey":			"#D1D1D1",
+	"default":		"#FFFFFF",
 }
 
 def getColor(key: str) -> str:
@@ -73,7 +75,7 @@ def applyThemeToQt(themeDefinition: dict):
 	palette["SELECTION_TEXT"]		= background("selection", bg)
 
 	palette["STATUS_BG"]			= background("statusBar", bg)
-	palette["STATUS_FG"]			= background("statusBar", fg)
+	palette["STATUS_FG"]			= foreground("statusBar", fg)
 
 	palette["PALETTE_BG"]			= background("paletteBorder", "#000000")
 	palette["PALETTE_FG"]			= foreground("paletteItem", fg)

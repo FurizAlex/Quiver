@@ -3,11 +3,9 @@ import os
 def openFile(filename):
 	if not os.path.exists(filename):
 		return [""]
-
 	try:
 		with open(filename, 'r', encoding='utf-8') as f:
 			lines = f.read().splitlines()
-
 			if not lines:
 				return [""]
 			return lines
@@ -16,6 +14,8 @@ def openFile(filename):
 
 def saveFile(filename, lines):
 	try:
+		filename = os.path.abspath(filename)
+		os.makedirs(os.path.dirname(filename), exist_ok=True) if os.path.dirname(filename) else None
 		with open(
 			filename,
 			'w',

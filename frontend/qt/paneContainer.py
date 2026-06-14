@@ -42,7 +42,7 @@ class PaneContainer(QWidget):
 			self.paneViews[index].setFocus()
 
 	def focusNextPane(self):
-		if not self.panesViews:
+		if not self.paneViews:
 			return
 		index = (self.editor.activePane + 1) % len(self.paneViews)
 		self.editor.activePane = index

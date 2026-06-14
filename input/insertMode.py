@@ -105,6 +105,51 @@ def handle(editor, event):
 			case "G":
 				editor.gotoMode = True
 				editor.gotoInput = ""
+			case "D":
+				if selection.active:
+					select = selection.normalized()
+					text = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
+					if not text:
+						return
+					startLine = select["ey"]
+					startColumn = select["ex"]
+					found = False
+					for lineIndex in range(startLine, len(buffer.lines)):
+						line = buffer.lines[lineIndex]
+						searchFrom = startColumn if lineIndex == startLine else 0
+						col = line.find(text, searchFrom)
+						if col != -1:
+							selection.begin(col, lineIndex)
+							selection.update(col + len(text), lineIndex)
+							pane.cursorY = lineIndex
+							pane.cursorX = col + len(text)
+							editor.updateScroll()
+							found = True
+							break
+					if not found:
+						editor.status = "NO MORE OCCURENCES"
+						editor.statusTimer = 60
+				else:
+					line = buffer.lines[pane.cursorY]
+					x = pane.cursorX
+					start = x
+					while start > 0 and (line[start - 1].isalnum() or line[start - 1] == '_'):
+						start -= 1
+					end = x
+					while end < len(line) and (line[end].isalnum() or line[end] == '_'):
+						end += 1
+					if start != end:
+						selection.begin(start, pane.cursorY)
+						selection.update(end, pane.cursorY)
+						pane.cursorX = end
+				editor.notifyChanged()
+			case "E":
+				if hasattr(editor, "signals"):
+					if hasattr(editor, "qtWindow"):
+						editor.qtWindow.focusExplorer()
+				else:
+					editor.focus = "explorer"
+				editor.notifyChanged()
 			case "F":
 				editor.searchMode = True
 				editor.searchInput = ""

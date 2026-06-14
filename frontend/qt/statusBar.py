@@ -38,9 +38,9 @@ class StatusBar(QWidget):
 		filename = buffer.filename or "[NO FILE]"
 		diagosticCount = buffer.diagnostics.count() if hasattr(buffer, "diagnostics") else 0
 		status = editor.status or ""
-		fg = getColor("STATUS_FG")
-		for label in (self.leftLabel, self.rightLabel):
-			label.setStyleSheet(f"background: transparent; color: {fg};")
+		#fg = getColor("STATUS_FG")
+		#for label in (self.leftLabel, self.rightLabel):
+		#	label.setStyleSheet(f"background: transparent; color: {fg};")
 		if status.startswith("KEY=") or status.startswith("'"):
 			status = ""
 		if editor.saving:

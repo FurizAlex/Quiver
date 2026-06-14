@@ -11,6 +11,9 @@ class TabBar(QWidget):
 		metrics = QFontMetrics(font)
 		self.setFixedHeight(metrics.height() + 8)
 		self.tabRects = []
+		self.dragIndex = -1
+		self.dragX = 0
+		self.dragOffsetX = 0
 		editor.signals.changed.connect(self.update)
 
 	def paintEvent(self, event):
@@ -57,11 +60,35 @@ class TabBar(QWidget):
 		if index == -1:
 			return
 		if event.button() == Qt.MouseButton.LeftButton:
+			self.dragIndex = index
+			self.dragX = mouseX
+			self.dragOffsetX = mouseX - self.tabRects[index][0]
 			self.editor.currentBuffer = index
 			self.editor.pane.buffer = self.editor.buffers[index]
 			self.editor.notifyChanged()
 		elif event.button() == Qt.MouseButton.MiddleButton:
 			self.closeTab(index)
+
+	def mouseMoveEvent(self, event):
+		if self.dragIndex == -1:
+			return
+		if not (event.buttons() & Qt.MouseButton.LeftButton):
+			self.dragIndex = -1
+			return
+		mouseX = event.position().x()
+		targetIndex = self.tabAt(mouseX)
+		if targetIndex != -1 and targetIndex != self.dragIndex:
+			buffers = self.editor.buffers
+			buffers[self.dragIndex], buffers[targetIndex] = buffers[targetIndex], buffers[self.dragIndex]
+			if self.editor.currentBuffer == self.dragIndex:
+				self.editor.currentBuffer = targetIndex
+			elif self.editor.currentBuffer == targetIndex:
+				self.editor.currentBuffer = self.dragIndex
+			self.dragIndex = targetIndex
+			self.editor.notifyChanged()
+
+	def mouseReleaseEvent(self, event):
+		self.dragIndex = -1
 
 	def closeTab(self, index):
 		if len(self.editor.buffers) <= 1:
@@ -75,15 +102,11 @@ class TabBar(QWidget):
 			return
 		buffer = self.editor.buffers[index]
 		if buffer.modified:
-			from PyQt6.QtWidgets import QMessageBox
-			reply = QMessageBox.question(
-				self,
+			from frontend.qt.app import QuiverDialog
+			if not QuiverDialog.ask(
 				"UNSAVED CHANGES",
 				f"'{buffer.name}' has unsaved changes. Close anyway?",
-				QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-				QMessageBox.StandardButton.No
-			)
-			if reply != QMessageBox.StandardButton.Yes:
+			):
 				return
 		self.editor.buffers.pop(index)
 		self.editor.currentBuffer = min(self.editor.currentBuffer, len(self.editor.buffers) - 1)

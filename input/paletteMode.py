@@ -120,6 +120,7 @@ def applyTheme(editor, themeId):
 		if hasattr(editor, "qtWindow"):
 			editor.qtWindow.applyQtTheme(module.THEME)
 	editor.settings.set("theme", themeId)
+	editor.saveConfig()
 	editor.status = f"Theme: {editor.theme.metadata.get('name', themeId)}"
 	editor.statusTimer = 120
 	editor.notifyChanged()

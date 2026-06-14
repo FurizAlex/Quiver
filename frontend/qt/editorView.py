@@ -188,7 +188,21 @@ class PaneView(QWidget):
 					endCol = startCol
 			x = self.gutterWidth + 8 + (startCol - pane.scrollX) * charWidth
 			w = (endCol - startCol) * charWidth
-			painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, QColor(getColor("SELECTION")))
+			y = visibleLine * lineHeight
+			painter.fillRect(x, y, w, lineHeight, QColor(getColor("SELECTION")))
+			try:
+				line = pane.buffer.lines[bufferY]
+			except IndexError:
+				continue
+			painter.setPen(QColor(getColor("SELECTION_TEXT")))
+			for col in range(startCol, endCol):
+				if col < pane.scrollX:
+					continue
+				if col >= len(line):
+					break
+				ch = line[col]
+				cx = self.gutterWidth + 8 + (col - pane.scrollX) * charWidth
+				painter.drawText(cx, y + metrics.ascent(), ch)
 
 	def tokenColor(self, tokenType):
 		mapping = {
@@ -214,8 +228,10 @@ class PaneView(QWidget):
 		row, col = self.pixelToRowCol(event.position().x(), event.position().y())
 		self.pane.cursorX = col
 		self.pane.cursorY = row
-		self.editor.selection.begin(col, row)
+		self.dragStartRow = row
+		self.dragStartCol = col
 		self.dragging = True
+		self.editor.selection.clear()
 		self.editor.updateScroll()
 		self.editor.notifyChanged()
 		self.cursorChanged.emit(row + 1, col + 1)
@@ -223,17 +239,17 @@ class PaneView(QWidget):
 	def mouseMoveEvent(self, event):
 		if getattr(self, "dragging", False):
 			row, col = self.pixelToRowCol(event.position().x(), event.position().y())
-			self.editor.selection.update(col, row)
-			self.pane.cursorX = col
-			self.pane.cursorY = row
-			self.editor.notifyChanged()
+			if not self.editor.selection.active:
+				if row != self.dragStartRow or col != self.dragStartCol:
+					self.editor.selection.begin(self.dragStartCol, self.dragStartRow)
+			if self.editor.selection.active:
+				self.editor.selection.update(col, row)
+				self.pane.cursorX = col
+				self.pane.cursorY = row
+				self.editor.notifyChanged()
 
 	def mouseReleaseEvent(self, event):
 		self.dragging = False
-		row, col = self.pixelToRowCol(event.position().x(), event.position().y())
-		select = self.editor.selection
-		if (select.active and select.startX == col and select.startY == row):
-			select.clear()
 		self.editor.notifyChanged()
 
 	def wheelEvent(self, event):

@@ -1,7 +1,9 @@
 import json
 import os
+from pathlib import Path
 
-CONFIG_FILE = "config.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CONFIG_FILE = str(PROJECT_ROOT / "config.json")
 
 class ConfigManager:
 	def __init__(self):
@@ -21,8 +23,8 @@ class ConfigManager:
 		try:
 			with open(CONFIG_FILE, "w", encoding="utf-8") as f:
 				json.dump(self.data, f, indent=4)
-		except Exception:
-			pass
+		except Exception as e:
+			print(f"Config save error: {e}")
 
 	def get(self, key, default=None):
 		return self.data.get(key, default)

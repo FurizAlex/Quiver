@@ -77,6 +77,7 @@ class Explorer(QWidget):
 		)
 		self.listWidget.viewport().setStyleSheet("background: #0000AA;")
 		self.listWidget.itemClicked.connect(self.openSelectedFile)
+		self.listWidget.installEventFilter(self)
 
 		layout.addWidget(self.header)
 		layout.addWidget(self.backButton)
@@ -142,3 +143,23 @@ class Explorer(QWidget):
 		else:
 			openFileBuffer(self.editor, filepath)
 			self.editor.notifyChanged()
+
+	def eventFilter(self, obj, event):
+		from PyQt6.QtCore import QEvent
+		from PyQt6.QtGui import QKeyEvent
+		if obj is self.listWidget and event.type() == QEvent.Type.KeyPress:
+			key = event.key()
+			from PyQt6.QtCore import Qt
+			if key == Qt.Key.Key_Escape or key == Qt.Key.Key_Tab:
+				if hasattr(self, "returnFocusTarget"):
+					self.returnFocusTarget.setFocus()
+				return True
+			if key == Qt.Key.Key_Backspace:
+				self.goBack()
+				return True
+			if key == Qt.Key.Key_Return or key == Qt.Key.Key_Enter:
+				item = self.listWidget.currentItem()
+				if item:
+					self.openSelectedFile(item)
+				return True
+		return False
