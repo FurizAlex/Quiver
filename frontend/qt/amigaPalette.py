@@ -36,6 +36,7 @@ CURSES_TO_HEX = {
 	"dark green":	"#087000",
 	"yellow":		"#CCCC00",
 	"blue":			"#0000AA",
+	"aqua":			"#05696B",			
 	"magenta":		"#AA00AA",
 	"cyan":			"#00AAAA",
 	"white":		"#FFFFFF",
@@ -84,8 +85,8 @@ def applyThemeToQt(themeDefinition: dict):
 	palette["PALETTE_TITLE"]		= foreground("paletteTitle", fg)
 	palette["PALETTE_HINT"]			= foreground("comment", fg)
 
-	palette["EXPLORER_BG"]			= background("explorerItem", bg)
-	palette["EXPLORER_FG"]			= foreground("explorerItem", fg)
+	palette["EXPLORER_BG"]			= background("explorerItem", fg)
+	palette["EXPLORER_FG"]			= foreground("explorerItem", bg)
 	palette["EXPLORER_SELECT_BG"]	= background("explorerSelection", bg)
 	palette["EXPLORER_SELECT_FG"]	= foreground("explorerSelection", fg)
 

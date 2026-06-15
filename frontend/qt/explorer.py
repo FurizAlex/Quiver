@@ -1,6 +1,6 @@
 import os
 from commands.fileCommands import openFileBuffer
-from PyQt6.QtWidgets import QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QPushButton
+from PyQt6.QtWidgets import QWidget, QListWidget, QListWidgetItem, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontMetrics, QPainter, QColor
 
@@ -69,6 +69,7 @@ class Explorer(QWidget):
 		self.listWidget = QListWidget()
 		self.listWidget.setObjectName("explorer")
 		self.listWidget.setFont(font)
+		self.listWidget.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
 		self.listWidget.setStyleSheet(
 			"QListWidget { background: #0000AA; color: white; border: none; outline: none; }"
 			"QListWidget::item { background: #0000AA; color: white; padding: 1px 4px; }"
@@ -79,8 +80,22 @@ class Explorer(QWidget):
 		self.listWidget.itemClicked.connect(self.openSelectedFile)
 		self.listWidget.installEventFilter(self)
 
+		self.newFolderButton = QPushButton("+ DIR")
+		self.newFolderButton.setFont(font)
+		self.newFolderButton.setFixedHeight(QFontMetrics(font).height() + 4)
+		self.newFolderButton.clicked.connect(self.createFolder)
+
+		buttonRow = QHBoxLayout()
+		buttonRow.setContentsMargins(0, 0, 0, 0)
+		buttonRow.setSpacing(0)
+		buttonRow.addWidget(self.backButton, stretch=1)
+		buttonRow.addWidget(self.newFolderButton)
+
+		buttonRowWidget = QWidget()
+		buttonRowWidget.setLayout(buttonRow)
+
 		layout.addWidget(self.header)
-		layout.addWidget(self.backButton)
+		layout.addWidget(buttonRowWidget)
 		layout.addWidget(self.listWidget, stretch=1)
 
 		editor.signals.changed.connect(self.syncVisibility)
@@ -110,6 +125,11 @@ class Explorer(QWidget):
 		self.listWidget.viewport().setStyleSheet(
 		    "background: " + explorerBg + ";"
 		)
+		self.newFolderButton.setStyleSheet(
+            "QPushButton { background: " + selectBg + "; color: " + selectFg + "; "
+            "border: none; padding-left: 6px; }"
+            "QPushButton:hover { background: " + explorerFg + "; color: " + explorerBg + "; }"
+        )
 
 	def syncVisibility(self):
 		self.setVisible(self.editor.showExplorer)
@@ -146,13 +166,11 @@ class Explorer(QWidget):
 
 	def eventFilter(self, obj, event):
 		from PyQt6.QtCore import QEvent
-		from PyQt6.QtGui import QKeyEvent
+		from PyQt6.QtCore import Qt
 		if obj is self.listWidget and event.type() == QEvent.Type.KeyPress:
 			key = event.key()
-			from PyQt6.QtCore import Qt
 			if key == Qt.Key.Key_Escape or key == Qt.Key.Key_Tab:
-				if hasattr(self, "returnFocusTarget"):
-					self.returnFocusTarget.setFocus()
+				self.returnToEditor()
 				return True
 			if key == Qt.Key.Key_Backspace:
 				self.goBack()
@@ -162,4 +180,32 @@ class Explorer(QWidget):
 				if item:
 					self.openSelectedFile(item)
 				return True
+			if key == Qt.Key.Key_F:
+				mods = event.modifiers()
+				if mods & Qt.KeyboardModifier.ControlModifier:
+					self.createFolder()
+					return True
 		return False
+	
+	def returnToEditor(self):
+		w = self.parent()
+		while w is not None:
+			if hasattr(w, "views"):
+				panes = w.views.paneContainer.paneViews
+				if panes:
+					panes[w.editor.activePane].setFocus()
+				return
+			w = w.parent()
+
+	def createFolder(self):
+		from PyQt6.QtWidgets import QInputDialog
+		name, ok = QInputDialog.getText(self, "New Folder", "Folder name:")
+		if ok and name.strip():
+			import os
+			newPath = os.path.join(self.editor.explorerPath, name.strip())
+			try:
+				os.makedirs(newPath, exist_ok=True)
+				self.rebuild()
+				self.editor.notifyChanged()
+			except Exception as e:
+				pass

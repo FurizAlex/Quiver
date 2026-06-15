@@ -7,7 +7,7 @@ THEME = {
     "comment":           {"fg": "white",   "bg": "black", "dim": True},
     "number":            {"fg": "magenta", "bg": "black"},
     "diagnosticError":   {"fg": "red",     "bg": "black"},
-    "selection":         {"fg": "black",   "bg": "magenta"},
+    "selection":         {"fg": "aqua",   "bg": "black"},
     "lineNumber":        {"fg": "white",   "bg": "black", "dim": True},
     "currentLineNumber": {"fg": "magenta", "bg": "black"},
     "statusBar":         {"fg": "black",   "bg": "magenta"},

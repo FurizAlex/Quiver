@@ -64,7 +64,7 @@ class BorderOverlay(QWidget):
 		painter.drawRect(margin, margin, self.width() - margin * 2 - 1, self.height() - margin * 2 - 1)
 
 class TitleBar(QWidget):
-	def __init__(self, title: str, font: QFont, parent=None):
+	def __init__(self, title: str, font: QFont, editor, parent=None):
 		super().__init__(parent)
 		self.dragPosition = None
 		self.setFixedHeight(QFontMetrics(font).height() + 14)
@@ -80,6 +80,8 @@ class TitleBar(QWidget):
 		self.buttonMin		= self.makeButton("#CCCC00", self.minimize)
 		self.buttonMax		= self.makeButton("#00CC00", self.maximize)
 		self.buttonClose	= self.makeButton("#CC0000", self.close)
+
+		editor.signals.changed.connect(self.update)
 
 		layout.addWidget(self.titleLabel)
 		layout.addStretch()
@@ -190,7 +192,7 @@ class QuiverDialog(QDialog):
 		buttonRow.addWidget(buttonNo)
 
 		if showSave:
-			buttonSave = makeButton("YES & SAVE", paletteBg, titleFg, self.save)
+			buttonSave = makeButton("YES + SAVE", paletteBg, titleFg, self.save)
 			buttonRow.addWidget(buttonSave)
 		
 		buttonRow.addWidget(buttonYes)
@@ -245,7 +247,7 @@ class MainWindow(QMainWindow):
 		rootLayout.setContentsMargins(margin, margin, margin, margin)
 		rootLayout.setSpacing(0)
 
-		self.titleBar = TitleBar("QUIVER", appFont, parent=root)
+		self.titleBar = TitleBar("QUIVER", appFont, self.editor, parent=root)
 
 		self.explorer = Explorer(self.editor, appFont)
 		self.explorer.rebuild()
@@ -305,6 +307,7 @@ class MainWindow(QMainWindow):
 		self.explorer.listWidget.setStyleSheet(listQss)
 		self.explorer.listWidget.viewport().setStyleSheet("background: " + explorerBg + ";")
 		self.explorer.header.update()
+		self.titleBar.update()
 		self.statusBarWidget.update()
 		self.editor.notifyChanged()
 
@@ -352,8 +355,8 @@ class MainWindow(QMainWindow):
 			f"'{self.pane.buffer.name}' has unsaved changes. Would you like to create a new file anyway?",
 			self.appFont, self
 		)
-		if outcome != "yes":
-			return
+			if outcome != "yes":
+				return
 		from core.buffer import Buffer
 		buffer = Buffer(editor=self, language=self.languageRegistry.get("text"))
 		self.editor.buffers.append(buffer)
@@ -376,6 +379,8 @@ if __name__ == "__main__":
 	appFont = loadAppFont()
 	app.setFont(appFont)
 	app.setStyleSheet(loadQtTheme("quiver"))
+	icon = QIcon("assets/icons/quiver.png")
+	app.setWindowIcon(icon)
 	window = MainWindow(appFont)
 	savedTheme = window.editor.settings.get("theme", "quiver")
 	try:
@@ -386,6 +391,7 @@ if __name__ == "__main__":
 		window.applyQtTheme(themeModule.THEME)
 	except Exception:
 		pass
+	window.setWindowIcon(icon)
 	window.show()
 	window.editor.resize(window.width(), window.height())
 	sys.exit(app.exec())

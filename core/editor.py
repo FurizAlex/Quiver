@@ -3,6 +3,7 @@ import os
 
 from core.buffer import Buffer
 from core.cursor import Cursor
+from core.multiSelection import MultiSelection
 from core.history import History
 from ui.renderer import Renderer
 
@@ -49,7 +50,7 @@ class Editor:
 
 		self.statusTimer = 0
 
-		self.selection = Selection()
+		self.selection = MultiSelection()
 		self.clipboard = Clipboard()
 
 		self.settings = Settings()

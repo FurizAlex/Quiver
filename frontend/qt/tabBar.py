@@ -12,9 +12,19 @@ class TabBar(QWidget):
 		self.setFixedHeight(metrics.height() + 8)
 		self.tabRects = []
 		self.dragIndex = -1
-		self.dragX = 0
-		self.dragOffsetX = 0
 		editor.signals.changed.connect(self.update)
+
+	def rebuildTabRects(self):
+		metrics = QFontMetrics(self.font)
+		self.tabRects = []
+		x = 4
+		for i, buffer in enumerate(self.editor.buffers):
+			name = buffer.name.upper()
+			if buffer.modified:
+				name += " *"
+			w = metrics.horizontalAdvance(name) + 16
+			self.tabRects.append((x, w, i))
+			x += w + 2
 
 	def paintEvent(self, event):
 		painter = QPainter(self)
@@ -27,28 +37,29 @@ class TabBar(QWidget):
 		activeFg	= getColor("TAB_ACTIVE_FG")
 
 		painter.fillRect(self.rect(), QColor(tabBg))
-		self.tabRects = []
+		self.rebuildTabRects()
 
-		x = 4
-		for i, buffer in enumerate(self.editor.buffers):
+		for (x, w, i) in self.tabRects:
+			buffer = self.editor.buffers[i]
 			name = buffer.name.upper()
 			if buffer.modified:
 				name += " *"
 			isActive = (i == self.editor.currentBuffer)
-			tabWidth = metrics.horizontalAdvance(name) + 16
-			tabHeight = self.height()
+			h = self.height()
 
 			if isActive:
-				painter.fillRect(x, 0, tabWidth, tabHeight, QColor(activeBg))
+				painter.fillRect(x, 0, w, h, QColor(activeBg))
+				painter.setPen(QColor(getColor("PALETTE_TITLE")))
+				painter.drawLine(x, h - 2, x + w, h - 2)
 				painter.setPen(QColor(activeFg))
 			else:
-				painter.fillRect(x, 2, tabWidth, tabHeight - 2, QColor(tabBg))
+				painter.fillRect(x, 2, w, h - 2, QColor(tabBg))
 				painter.setPen(QColor(tabFg))
 			painter.drawText(x + 8, metrics.ascent() + 4, name)
-			self.tabRects.append((x, tabWidth, i))
-			x += tabWidth + 2
 
 	def tabAt(self, mouseX):
+		if not self.tabRects:
+			self.rebuildTabRects()
 		for x, w, i in self.tabRects:
 			if x <= mouseX < x + w:
 				return i
@@ -61,10 +72,11 @@ class TabBar(QWidget):
 			return
 		if event.button() == Qt.MouseButton.LeftButton:
 			self.dragIndex = index
-			self.dragX = mouseX
-			self.dragOffsetX = mouseX - self.tabRects[index][0]
 			self.editor.currentBuffer = index
 			self.editor.pane.buffer = self.editor.buffers[index]
+			self.editor.pane.cursorX = 0
+			self.editor.pane.cursorY = 0
+			self.editor.updateScroll()
 			self.editor.notifyChanged()
 		elif event.button() == Qt.MouseButton.MiddleButton:
 			self.closeTab(index)
@@ -76,15 +88,15 @@ class TabBar(QWidget):
 			self.dragIndex = -1
 			return
 		mouseX = event.position().x()
-		targetIndex = self.tabAt(mouseX)
-		if targetIndex != -1 and targetIndex != self.dragIndex:
+		target = self.tabAt(mouseX)
+		if target != -1 and target != self.dragIndex:
 			buffers = self.editor.buffers
-			buffers[self.dragIndex], buffers[targetIndex] = buffers[targetIndex], buffers[self.dragIndex]
+			buffers[self.dragIndex], buffers[target] = buffers[target], buffers[self.dragIndex]
 			if self.editor.currentBuffer == self.dragIndex:
-				self.editor.currentBuffer = targetIndex
-			elif self.editor.currentBuffer == targetIndex:
+				self.editor.currentBuffer = target
+			elif self.editor.currentBuffer == target:
 				self.editor.currentBuffer = self.dragIndex
-			self.dragIndex = targetIndex
+			self.dragIndex = target
 			self.editor.notifyChanged()
 
 	def mouseReleaseEvent(self, event):

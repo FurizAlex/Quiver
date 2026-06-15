@@ -42,13 +42,20 @@ class EditorView(QWidget):
 		self.editor.resize(self.width(), self.height())
 
 class PaneView(QWidget):
+	TEXT_PADDING = 8
 	cursorChanged = pyqtSignal(int, int)
 	def __init__(self, editor, pane, font: QFont, paneIndex=0):
 		super().__init__()
+		self.cursorTrail = []
+		self.TRAIL_LENGTH = 4
 
 		self.editor = editor
 		self.pane = pane
 		self.font = font
+
+		self.cursorScaleY = 1.0
+		self.cursorTargetScaleY = 1.0
+		self.lastCursorRow = 0
 
 		self.cursorAnimX = None
 		self.cursorAnimY = None
@@ -66,6 +73,7 @@ class PaneView(QWidget):
 
 		metrics = QFontMetrics(font)
 		self.gutterWidth = metrics.horizontalAdvance("0000") + 40
+		self.textX = self.gutterWidth + self.TEXT_PADDING
 		self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 		editor.signals.changed.connect(self.update)
 
@@ -91,7 +99,7 @@ class PaneView(QWidget):
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
 		visibleY = pane.cursorY - pane.scrollY
-		x = self.gutterWidth + 8 + (pane.cursorX - pane.cursorY) * charWidth
+		x = self.textX + (pane.cursorX - pane.scrollX) * charWidth
 		y = visibleY * lineHeight
 		return x, y
 	
@@ -100,14 +108,27 @@ class PaneView(QWidget):
 		if self.cursorAnimX is None:
 			self.cursorAnimX = float(tx)
 			self.cursorAnimY = float(ty)
+			self.lastCursorRow = self.pane.cursorY
+			self.cursorScaleY = 1.0
 			return
+
+		if self.pane.cursorY != self.lastCursorRow:
+			self.cursorScaleY = 0.35
+			self.lastCursorRow = self.pane.cursorY
+			self.cursorTrail.clear()
+		
+		self.cursorScaleY += (1.0 - self.cursorScaleY) * 0.2
 		speed = 0.3
 		dx = tx - self.cursorAnimX
 		dy = ty - self.cursorAnimY
-		if abs(dx) < 0.5 and abs(dy) < 0.5:
-			self.cursorAnimX = float(tx)
-			self.cursorAnimY = float(ty)
-			return
+		moved = abs(dx) > 0.5 or abs(dy) > 0.5
+		if moved:
+			self.cursorTrail.append((self.cursorAnimX, self.cursorAnimY))
+			if len(self.cursorTrail) > self.TRAIL_LENGTH:
+				self.cursorTrail.pop(0)
+		else:
+			if self.cursorTrail:
+				self.cursorTrail.pop(0)
 		self.cursorAnimX += dx * speed
 		self.cursorAnimY += dy * speed
 		self.update()
@@ -147,7 +168,7 @@ class PaneView(QWidget):
 
 		for lineIndex, line in enumerate(lines):
 			tokens = self.lexer.tokenize(line, pane.buffer.language)
-			x = self.gutterWidth + 8
+			x = self.textX
 			bufferX = 0
 			for tokenText, tokenType in tokens:
 				for ch in tokenText:
@@ -186,20 +207,35 @@ class PaneView(QWidget):
 			tx, ty = self.cursorPixelPos()
 			self.cursorAnimX = float(tx)
 			self.cursorAnimY = float(ty)
-		
-		x = int(self.cursorAnimX)
-		y = int(self.cursorAnimY)
 
 		visibleY = pane.cursorY - pane.scrollY
 		if visibleY < 0:
 			return
-		painter.fillRect(x, y, charWidth, lineHeight, QColor(getColor("CURSOR")))
+	
+		scaleY = getattr(self, "cursorScaleY", 1.0)
+		scaledH = max(2, int(lineHeight * scaleY))
+		yOffset = (lineHeight - scaledH) // 2
+
+		x = int(self.cursorAnimX)
+		y = int(self.cursorAnimY)
+
+		cursorColor = QColor(getColor("CURSOR"))
+		for i, (tx, ty) in enumerate(self.cursorTrail):
+			alpha = int(160 * (i + 1) / max(len(self.cursorTrail), 1))
+			trailColor = QColor(cursorColor)
+			trailColor.setAlpha(alpha)
+			trailH = max(2, int(lineHeight * (0.3 + 0.7 * (i + 1) / len(self.cursorTrail))))
+			trailYOff = (lineHeight - trailH) // 2
+			painter.fillRect(int(tx), int(ty) + trailYOff, charWidth, trailH, trailColor)
+
+		painter.fillRect(x, y + yOffset, charWidth, scaledH, QColor(getColor("CURSOR")))
 		try:
 			ch = pane.buffer.lines[pane.cursorY][pane.cursorX]
 		except IndexError:
 			ch = " "
-		painter.setPen(QColor(getColor("BACKGROUND")))
-		painter.drawText(x, y + metrics.ascent(), ch)
+		if scaleY > 0.6:
+			painter.setPen(QColor(getColor("BACKGROUND")))
+			painter.drawText(x, y + metrics.ascent(), ch)
 		self.editor.completionX = x
 		self.editor.completionY = y
 
@@ -224,34 +260,23 @@ class PaneView(QWidget):
 		visibleCount = self.height() // lineHeight + 1
 		for visibleLine in range(visibleCount):
 			bufferY = pane.scrollY + visibleLine
-			selectionRange = selection.selectedColumns(bufferY)
-			if selectionRange is None:
-				continue
-			startCol, endCol = selectionRange
-			if startCol is None:
-				startCol = 0
-			if endCol is None:
-				try:
-					endCol = len(pane.buffer.lines[bufferY])
-				except IndexError:
-					endCol = startCol
-			x = self.gutterWidth + 8 + (startCol - pane.scrollX) * charWidth
-			w = (endCol - startCol) * charWidth
-			y = visibleLine * lineHeight
-			painter.fillRect(x, y, w, lineHeight, QColor(getColor("SELECTION")))
-			try:
-				line = pane.buffer.lines[bufferY]
-			except IndexError:
-				continue
-			painter.setPen(QColor(getColor("SELECTION_TEXT")))
-			for col in range(startCol, endCol):
-				if col < pane.scrollX:
-					continue
-				if col >= len(line):
-					break
-				ch = line[col]
-				cx = self.gutterWidth + 8 + (col - pane.scrollX) * charWidth
-				painter.drawText(cx, y + metrics.ascent(), ch)
+			for norm in selection.allNormalized():
+				if norm["sy"] <= bufferY <= norm["ey"]:
+					sc = norm["sx"] if bufferY == norm["sy"] else 0
+					ec = norm["ex"] if bufferY == norm["ey"] else len(pane.buffer.lines[bufferY])
+					x = self.textX + (sc - pane.scrollX) * charWidth
+					w = (ec - sc) * charWidth
+					painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, QColor(getColor("SELECTION")))
+					try:
+						line = pane.buffer.lines[bufferY]
+						painter.setPen(QColor(getColor("SELECTION_TEXT")))
+						for col in range(sc, ec):
+							if col < pane.scrollX or col >= len(line):
+								continue
+							cx = self.textX + (col - pane.scrollX) * charWidth
+							painter.drawText(cx, visibleLine * lineHeight + metrics.ascent(), line[col])
+					except IndexError:
+						pass
 
 	def tokenColor(self, tokenType):
 		mapping = {
@@ -264,6 +289,14 @@ class PaneView(QWidget):
 		return QColor(getColor(mapping.get(tokenType, "TEXT")))
 
 	def keyPressEvent(self, event):
+		if event.key() == Qt.Key.Key_Tab:
+			self.editor.activePane = self.paneIndex
+			inputEvent = translateKey(event)
+			self.editor.handleInput(inputEvent)
+			self.editor.updateScroll()
+			self.editor.notifyChanged()
+			event.accept()
+			return
 		self.editor.activePane = self.paneIndex
 		inputEvent = translateKey(event)
 		self.editor.handleInput(inputEvent)
@@ -335,7 +368,7 @@ class PaneView(QWidget):
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
-		col = max(0, int((px - self.gutterWidth - 8) / charWidth)) + self.pane.scrollX
+		col = max(0, int((px - self.textX) / charWidth)) + self.pane.scrollX
 		row = int(py / lineHeight) + self.pane.scrollY
 		row = max(0, min(row, len(self.pane.buffer.lines) - 1))
 		col = max(0, min(col, len(self.pane.buffer.lines[row])))

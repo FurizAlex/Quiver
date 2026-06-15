@@ -137,32 +137,36 @@ def handle(editor, event):
 						selection.update(end, pane.cursorY)
 						pane.cursorX = end
 					editor.notifyChanged()
+					return
 				else:
 					select = selection.normalized()
 					searchText = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
 					if not searchText or "\n" in searchText:
-						editor.notifyChanged()
 						return
-					startLine = select["ey"]
-					startCol = select["ex"]
-					found = False
+					allSelects = selection.allNormalized()
+					lastSelect = allSelects[-1]
+					searchLine = lastSelect["ey"]
+					searchCol = lastSelect["ex"]
 					lineCount = len(buffer.lines)
 					for offset in range(lineCount + 1):
-						lineIndex = (startLine + offset) % lineCount
+						lineIndex = (searchLine + offset) % lineCount
 						line = buffer.lines[lineIndex]
-						searchFrom = startCol if (offset == 0) else 0
-						col = line.find(searchText, searchFrom)
-						if col != -1 and not (lineIndex == select["sy"] and col == select["sx"]):
-							selection.begin(col, lineIndex)
-							selection.update(col + len(searchText), lineIndex)
-							pane.cursorY = lineIndex
-							pane.cursorX = col + len(searchText)
-							editor.updateScroll()
-							found = True
-							break
-					if not found:
-						editor.status = "NO MORE OCCURRENCES"
-						editor.statusTimer = 60
+						fromCol = searchCol if (offset == 0) else 0
+						col = line.find(searchText, fromCol)
+						if col == -1:
+							continue
+						already = any(
+							s["sy"] == lineIndex and s["sx"] == col
+							for s in allSelects
+						)
+						selection.addSelection(col, lineIndex, col + len(searchText), lineIndex)
+						pane.cursorY = lineIndex
+						pane.cursorX = col + len(searchText)
+						editor.updateScroll()
+						editor.notifyChanged()
+						return
+					editor.status = "NO MORE OCCURRENCES"
+					editor.statusTimer = 60
 					editor.notifyChanged()
 			case "E":
 				if hasattr(editor, "signals"):
