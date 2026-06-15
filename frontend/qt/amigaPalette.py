@@ -32,6 +32,7 @@ palette = {
 CURSES_TO_HEX = {
 	"black":		"#000000",
 	"red":			"#CC0000",
+	"lime":			"#00FF00",
 	"green":		"#00CC00",
 	"dark green":	"#087000",
 	"yellow":		"#CCCC00",
