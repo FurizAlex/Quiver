@@ -116,10 +116,12 @@ class PaneView(QWidget):
 		pane = self.pane
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
-		charWidth = metrics.horizontalAdvance("M")
-		visibleY = pane.cursorY - pane.scrollY
-		x = self.textX + (pane.cursorX - pane.scrollX) * charWidth
-		y = visibleY * lineHeight
+		try:
+			line = pane.buffer.lines[pane.cursorY]
+		except IndexError:
+			line = ""
+		x = self.cursorXToPixel(line, pane.cursorX)
+		y = (pane.cursorY - pane.scrollY) * lineHeight
 		return x, y
 	
 	def tickCursorAnim(self):
@@ -172,6 +174,7 @@ class PaneView(QWidget):
 				self.backgroundImagePath	= backgroundPath
 			if self.backgroundImage and not self.backgroundImage.isNull():
 				painter.drawImage(0, 0, self.backgroundImage)
+				painter.fillRect(self.rect(), QColor(0, 0, 0, 180))
 			else:
 				painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
 		else:
@@ -196,7 +199,7 @@ class PaneView(QWidget):
 				painter.drawImage(0, 0, self.backgroundImage, 0, 0, gw, gh)
 			else:
 				painter.fillRect(0, 0, gw, gh, QColor(getColor("GUTTER")))
-			painter.fillRect(0, 0, gw, gh, 140)
+			painter.fillRect(0, 0, gw, gh, QColor(0, 0, 0, 140))
 		else:
 			painter.fillRect(0, 0, gw, gh, QColor(getColor("GUTTER")))
 
@@ -425,15 +428,16 @@ class PaneView(QWidget):
 		pane = self.pane
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
-		charWidth = metrics.horizontalAdvance("M")
-		visibleY = pane.cursorY - pane.scrollY
-		x = self.gutterWidth + 8 + (pane.cursorX - pane.scrollX) * charWidth
-		y = visibleY * lineHeight
+		try:
+			line = pane.buffer.lines[pane.cursorY]
+		except IndexError:
+			line = ""
+		x = self.cursorXToPixel(line, pane.cursorX)
+		y = (pane.cursorY - pane.scrollY) * lineHeight
 		
 		from PyQt6.QtCore import QPoint
-		globalPoint = self.mapToGlobal(QPoint(x, y))
-		
-		editorView = self.parent()
+		globalPoint	= self.mapToGlobal(QPoint(x, y))
+		editorView	= self.parent()
 		while editorView is not None and not hasattr(editorView, 'overlay'):
 			editorView = editorView.parent()
 		if editorView is not None:
@@ -441,12 +445,36 @@ class PaneView(QWidget):
 			self.editor.completionX = localPoint.x()
 			self.editor.completionY = localPoint.y()
 
+	def cursorXToPixel(self, line: str, cursorX: int) -> int:
+		metrics = QFontMetrics(self.font)
+		charWidth = metrics.horizontalAdvance("M")
+		visualCol = 0
+		for i, ch in enumerate(line):
+			if i >= cursorX:
+				break
+			if ch == "\t":
+				spaces = self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
+				visualCol += spaces
+			else:
+				visualCol += 1
+		return self.textX + (visualCol - self.pane.scrollX) * charWidth
+
 	def pixelToRowCol(self, px, py):
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
-		col = max(0, int((px - self.textX) / charWidth)) + self.pane.scrollX
 		row = int(py / lineHeight) + self.pane.scrollY
 		row = max(0, min(row, len(self.pane.buffer.lines) - 1))
-		col = max(0, min(col, len(self.pane.buffer.lines[row])))
-		return row, col
+
+		line = self.pane.buffer.lines[row]
+		visualCol = 0
+		for i, ch in enumerate(line):
+			pixelX = self.textX + (visualCol - self.pane.scrollX) * charWidth
+			if pixelX >= px:
+				return row, i
+			if ch == "\t":
+				spaces = self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
+				visualCol += spaces
+			else:
+				visualCol += 1
+		return row, len(line)

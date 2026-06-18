@@ -47,9 +47,10 @@ CURSES_TO_HEX = {
 	"blue":			"#0000AA",
 	"aqua":			"#05696B",			
 	"magenta":		"#AA00AA",
-	"cyan":			"#00AAAA",
+	"cyan":			"#008F8F",
 	"white":		"#FFFFFF",
 	"grey":			"#D1D1D1",
+	"dark grey":	"#808080",
 	"default":		"#FFFFFF",
 }
 
