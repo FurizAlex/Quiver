@@ -26,3 +26,25 @@ def closePane(editor):
 
 def nextPane(editor):
 	editor.activePane = ((editor.activePane + 1) % len(editor.panes))
+
+def openFolder(editor):
+	if hasattr(editor, "signals"):
+		from PyQt6.QtWidgets import QFileDialog
+		folder = QFileDialog.getExistingDirectory(
+			None,
+			"Open Folder",
+			editor.explorerPath,
+			QFileDialog.Option.ShowDirsOnly
+		)
+		if folder:
+			editor.explorerPath = folder
+			if hasattr(editor, "qtWindow"):
+				editor.qtWindow.explorer.rebuild()
+			editor.status = f"Folder: {folder}"
+			editor.statusTimer = 120
+			editor.notifyChanged()
+	else:
+		editor.status = "OPEN FOLDER: type path and press ENTER"
+		editor.folderInputMode = True
+		editor.folderInput = ""
+		editor.notifyChanged()

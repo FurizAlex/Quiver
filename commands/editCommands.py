@@ -13,6 +13,10 @@ def undo(editor):
 
 	buffer.ensureValid()
 
+	editor.status = "UNDO"
+	editor.statusTimer = 60
+	editor.notifyChanged()
+
 def redo(editor):
 	buffer = editor.pane.buffer
 	pane = editor.pane
@@ -27,3 +31,7 @@ def redo(editor):
 	pane.cursorY = state[2]
 
 	buffer.ensureValid()
+
+	editor.status = "REDO"
+	editor.statusTimer = 60
+	editor.notifyChanged()

@@ -151,6 +151,10 @@ def loadBackgroundImage(path: str, w: int, h: int) -> "QImage":
 	img = QImage(str(fullPath))
 	if img.isNull():
 		return None
+	
+	MAX_W, MAX_H = 640, 360
+	if img.width() > MAX_W or img.height() > MAX_H:
+		img = img.scaled(MAX_W, MAX_H, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
 	return img.scaled(w, h, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
 
 def applyThemeToQt(themeDefinition: dict):

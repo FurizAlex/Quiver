@@ -302,6 +302,7 @@ class MainWindow(QMainWindow):
 		self.resize(1280, 720)
 		self.setMinimumSize(800, 550)
 
+		self.editor.signals.changed.connect(self.updateWindowTitle)
 		self.statusBarWidget.updateState(self.editor)
 		self.views.setFocus()
 
@@ -480,6 +481,13 @@ class MainWindow(QMainWindow):
 		self.explorer.listWidget.setFocus()
 		if self.explorer.listWidget.count() > 0:
 			self.explorer.listWidget.setCurrentRow(0)
+
+	def updateWindowTitle(self):
+		buffer		= self.editor.pane.buffer
+		name		= buffer.name if buffer.name else "untitled"
+		modified	= " *" if buffer.modified else ""
+		self.setWindowTitle(f"{name}{modified} - QUIVER")
+		self.titleBar.titleLabel.setText(f"QUIVER | {name}{modified}")
 
 if __name__ == "__main__":
 	app = QApplication(sys.argv)

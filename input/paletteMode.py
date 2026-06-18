@@ -25,12 +25,19 @@ def handle(editor, event):
 		editor.notifyChanged()
 		return
 	if key == "UP":
-		editor.paletteSelection = max(0, editor.paletteSelection - 1)
+		items = filtered(editor)
+		newIndex = editor.paletteSelection - 1
+		while newIndex >= 0 and items[newIndex].get("separator"):
+			newIndex -= 1
+		editor.paletteSelection = max(0, newIndex)
 		editor.notifyChanged()
 		return
 	if key == "DOWN":
 		items = filtered(editor)
-		editor.paletteSelection = min(len(items) - 1, editor.paletteSelection + 1)
+		newIndex = editor.paletteSelection + 1
+		while newIndex < len(items) and items[newIndex].get("separator"):
+			newIndex += 1
+		editor.paletteSelection = min(len(items) - 1, newIndex)
 		editor.notifyChanged()
 		return
 	if key == "ENTER":
@@ -38,6 +45,8 @@ def handle(editor, event):
 		if not items:
 			return
 		select = items[min(editor.paletteSelection, len(items) - 1)]
+		if select.get("separator"):
+			return
 		command = select.get("command", "")
 		if editor.paletteMode == "files":
 			path = select.get("path", "")
@@ -145,15 +154,32 @@ def openFilePalette(editor):
 	editor.paletteInput = ""
 	editor.paletteSelection = 0
 
+	paletteDir = getattr(editor, "paletteDir", None) or editor.explorerPath or "."
+	editor.paletteDir = paletteDir
+
 	items = []
-	for file in sorted(os.listdir(".")):
-		if os.path.isfile(file):
-			items.append({
-				"name": file,
-				"action": "open_file_path",
-				"path": os.path.abspath(file)
-			})
+	recents = getattr(editor, "recentFiles", [])
+	validRecents = [p for p in recents if os.path.exists(p)]
+	for path in validRecents:
+		items.append({
+			"name": f"~ {os.path.basename(path)}",
+			"path": path,
+		})
+	if validRecents:
+		items.append({
+			"name": "--- DIRECTORY ---",
+			"path": None,
+			"separator": True,
+		})
+	try:
+		for name in sorted(os.listdir(paletteDir)):
+			fullPath	= os.path.join(paletteDir, name)
+			display		= f"> {name}" if os.path.isdir(fullPath) else f"  {name}"
+			items.append({"name": display, "path": fullPath})
+	except Exception:
+		pass
 	editor.paletteItems = items
+	editor.notifyChanged()
 
 def populateFilePalette(editor, path):
 	items = []

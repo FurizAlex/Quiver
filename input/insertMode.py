@@ -181,17 +181,63 @@ def handle(editor, event):
 			case "F":
 				editor.searchMode = True
 				editor.searchInput = ""
+				editor.searchMatches = []
+				editor.searchMatchIndex = 0
 			case "C":
 				if selection.active:
-					select = selection.normalized()
-					text = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
-					clipboard.copy(text)
+					if hasattr(selection, "allNormalized") and len(selection.allNormalized()) > 1:
+						parts = []
+						for select in sorted(selection.allNormalized(), key=lambda s: (s["sy"], s["sx"])):
+							if select["sy"] == select["ey"]:
+								parts.append(buffer.lines[select["sy"]][select["sx"]:select["ex"]])
+							else:
+								chunk = []
+								for y in range(select["sy"], select["ey"] + 1):
+									line = buffer.lines[y]
+									if y == select["sy"]:
+										chunk.append(line[select["sx"]:])
+									elif y == select["ey"]:
+										chunk.append(line[:select["ex"]])
+									else:
+										chunk.append(line)
+								parts.append("\n".join(chunk))
+						clipboard.copy('\n'.join(parts))
+					else:
+						selects = selection.normalized()
+						lines = []
+						for y in range(selects["sy"], selects["ey"] + 1):
+							line = buffer.lines[y]
+							if y == selects["sy"] and y == selects["ey"]:
+								lines.append(line[selects["sx"]:selects["ex"]])
+							elif y == selects["sy"]:
+								lines.append(line[selects["sx"]:])
+							elif y == selects["ey"]:
+								lines.append(line[:selects["ex"]])
+							else:
+								lines.append(line)
+						clipboard.copy("\n".join(lines))
 			case "V":
 				text = clipboard.paste()
 				if text:
 					if selection.active:
 						deleteSelection(editor)
-					insertText(editor, text)
+					if "\n" in text:
+						saveUndo(editor)
+						parts = text.split("\n")
+						line = buffer.lines[pane.cursorY]
+						left = line[:pane.cursorX]
+						right = line[pane.cursorX:]
+						buffer.lines[pane.cursorY] = left + parts[0]
+						for i, part in enumerate(parts[1: -1], 1):
+							buffer.lines.insert(pane.cursorY + i, part)
+						lastIndex = pane.cursorY + len(parts) - 1
+						buffer.lines.insert(lastIndex, parts[-1] + right)
+						pane.cursorY = lastIndex
+						pane.cursorX = len(parts[-1])
+					else:
+						insertText(editor, text)
+					editor.updateScroll()
+					editor.notifyChanged()
 			case "X":
 				if selection.active:
 					select = selection.normalized()
@@ -430,7 +476,26 @@ def handle(editor, event):
 						insertText(editor, key + PAIRS[key])
 						pane.cursorX -= 1
 				else:
-					insertText(editor, key)
+					if selection.active:
+						if hasattr(selection, "allNormalized") and len(selection.allNormalized()) > 1:
+							allSelects = sorted(selection.allNormalized(), key=lambda s: (s["sy"], ["sx"]), reverse=True)
+							for select in allSelects:
+								if select["sy"] == select["ey"]:
+									line = buffer.lines[select["sy"]]
+									buffer.lines[select["sy"]] = line[:select["sx"]] + key + line[select["ex"]:]
+								else:
+									first = buffer.lines[select["sy"]][:select["sx"]]
+									last = buffer.lines[select["ey"]][select["ex"]:]
+									buffer.lines[select["sy"]:select["ey"] + 1] = [first + key + last]
+							lastSelect = min(allSelects, key=lambda s: (s["sy"], s["sx"]))
+							pane.cursorY = lastSelect["sy"]
+							pane.cursorX = lastSelect["sx"] + len(key)
+							selection.clear()
+						else:
+							deleteSelection(editor)
+							insertText(editor, key)
+					else:
+						insertText(editor, key)
 				updateCompletions(editor)
 				editor.notifyChanged()
 				return

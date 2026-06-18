@@ -41,6 +41,9 @@ class ExplorerHeader(QWidget):
 		painter.setPen(QColor(explorerFg))
 		painter.drawText(6, self.rowHeight + metrics.ascent() + 2, "FILES")
 
+		if self.editor.showExplorer and getattr(self.editor, "explorerFocused", False):
+			painter.fillRect(0, self.height() - 2, self.width(), 2, QColor(getColor("PALETTE_TITLE")))
+
 class Explorer(QWidget):
 	def __init__(self, editor, font: QFont):
 		super().__init__()
@@ -183,25 +186,33 @@ class Explorer(QWidget):
 
 	def eventFilter(self, obj, event):
 		from PyQt6.QtCore import QEvent
-		from PyQt6.QtCore import Qt
-		if obj is self.listWidget and event.type() == QEvent.Type.KeyPress:
-			key = event.key()
-			if key == Qt.Key.Key_Escape or key == Qt.Key.Key_Tab:
-				self.returnToEditor()
-				return True
-			if key == Qt.Key.Key_Backspace:
-				self.goBack()
-				return True
-			if key == Qt.Key.Key_Return or key == Qt.Key.Key_Enter:
-				item = self.listWidget.currentItem()
-				if item:
-					self.openSelectedFile(item)
-				return True
-			if key == Qt.Key.Key_F:
-				mods = event.modifiers()
-				if mods & Qt.KeyboardModifier.ControlModifier:
-					self.createFolder()
+		if obj is self.listWidget:
+			if event.type() == QEvent.Type.FocusIn:
+				self.editor.explorerFocused = True
+				self.editor.notifyChanged()
+				return False
+			if event.type() == QEvent.Type.FocusOut:
+				self.editor.explorerFocused = False
+				self.editor.notifyChanged()
+				return False
+			if event.type() == QEvent.Type.KeyPress:
+				key = event.key()
+				if key == Qt.Key.Key_Escape or key == Qt.Key.Key_Tab:
+					self.returnToEditor()
 					return True
+				if key == Qt.Key.Key_Backspace:
+					self.goBack()
+					return True
+				if key == Qt.Key.Key_Return or key == Qt.Key.Key_Enter:
+					item = self.listWidget.currentItem()
+					if item:
+						self.openSelectedFile(item)
+					return True
+				if key == Qt.Key.Key_F:
+					mods = event.modifiers()
+					if mods & Qt.KeyboardModifier.ControlModifier:
+						self.createFolder()
+						return True
 		return False
 	
 	def returnToEditor(self):

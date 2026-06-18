@@ -11,6 +11,11 @@
         "wrap_text": false,
         "scroll_offset": 5,
         "font_size": 14,
-        "show_explorer": true
+        "show_explorer": true,
+        "recentFiles": [
+            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/main.py",
+            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/README.md",
+            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/config.json"
+        ]
     }
 }

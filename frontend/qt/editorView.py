@@ -216,6 +216,29 @@ class PaneView(QWidget):
 			y = i * lineHeight + metrics.ascent()
 			painter.drawText(x, y, text)
 
+		if self.paneIndex == self.editor.activePane and not getattr(self.editor, "explorerFocused", False):
+			painter.fillRect(0, 0, 3, self.height(), QColor(getColor("CURSOR")))
+
+		totalLines = len(pane.buffer.lines)
+		if totalLines <= pane.visibleLines:
+			return
+		metrics		= QFontMetrics(self.font)
+		lineHeight	= metrics.height()
+		trackHeight	= self.height()
+		trackX		= self.gutterWidth - 4
+		trackWidth	= 3
+
+		painter.fillRect(trackX, 0, trackWidth, trackHeight, QColor(0, 0, 0, 60))
+
+		thumbRatio	= pane.visibleLines / totalLines
+		thumbHeight	= max(12, int(trackHeight * thumbRatio))
+		scrollRatio	= pane.scrollY / max(1, totalLines - pane.visibleLines)
+		thumbY		= int((trackHeight - thumbHeight) * scrollRatio)
+
+		thumbColor	= QColor(getColor("COMMENT"))
+		thumbColor.setAlpha(180)
+		painter.fillRect(trackX, thumbY, trackWidth, thumbHeight, thumbColor)
+
 	def drawText(self, painter):
 		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)

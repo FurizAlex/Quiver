@@ -1,3 +1,5 @@
+import os
+
 from util.fileio import saveFile
 from util.fileio import openFile
 
@@ -21,6 +23,7 @@ def openFileBuffer(editor, filename):
 			editor.currentBuffer = i
 			editor.pane.buffer = editor.buffers[i]
 			editor.status = (f"Switched to {filename}")
+			trackRecent(editor, filename)
 			return
 	newBuffer = Buffer(editor, filename)
 	newBuffer.language = editor.languageRegistry.detect(filename)
@@ -42,3 +45,13 @@ def openFileBuffer(editor, filename):
 	editor.pane.cursorY = 0
 
 	editor.status = f"Opened {filename}"
+	trackRecent(editor, filename)
+
+def trackRecent(editor, filename):
+	absPath = os.path.abspath(filename)
+	recents = getattr(editor, "recentFiles", [])
+	if absPath in recents:
+		recents.remove(absPath)
+	recents.insert(0, absPath)
+	editor.recentFiles = recents[:10]
+	editor.settings.set("recentFiles", editor.recentFiles)
