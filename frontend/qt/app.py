@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from frontend.qt.qtTheme import loadQtTheme
 from frontend.qt.editorQt import EditorQt
@@ -18,7 +18,7 @@ from frontend.qt.explorer import Explorer
 from frontend.qt.tabBar import TabBar
 
 def loadAppFont():
-	fontID = QFontDatabase.addApplicationFont("assets/fonts/Terminus.ttf")
+	fontID = QFontDatabase.addApplicationFont("assets/fonts/Courier New.ttf")
 	if fontID != -1:
 		family = QFontDatabase.applicationFontFamilies(fontID)[0]
 	else:
@@ -64,10 +64,12 @@ class BorderOverlay(QWidget):
 		painter.drawRect(margin, margin, self.width() - margin * 2 - 1, self.height() - margin * 2 - 1)
 
 class TitleBar(QWidget):
+	dragRequest = pyqtSignal(object)
 	def __init__(self, title: str, font: QFont, editor, parent=None):
 		super().__init__(parent)
 		self.dragPosition = None
 		self.setFixedHeight(QFontMetrics(font).height() + 14)
+		self.setMouseTracking(True)
 
 		layout = QHBoxLayout(self)
 		layout.setContentsMargins(8, 0, 4, 0)
@@ -76,10 +78,11 @@ class TitleBar(QWidget):
 		self.titleLabel = QLabel(title)
 		self.titleLabel.setFont(font)
 		self.titleLabel.setStyleSheet("color: white; background: transparent;")
+		self.titleLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
 		self.buttonMin		= self.makeButton("#CCCC00", self.minimize)
 		self.buttonMax		= self.makeButton("#00CC00", self.maximize)
-		self.buttonClose	= self.makeButton("#CC0000", self.close)
+		self.buttonClose	= self.makeButton("#CC0000", self.closeWindow)
 
 		editor.signals.changed.connect(self.update)
 
@@ -94,17 +97,22 @@ class TitleBar(QWidget):
 
 	def mousePressEvent(self, event):
 		if event.button() == Qt.MouseButton.LeftButton:
-			self.dragPosition = event.globalPosition().toPoint() - self.window().frameGeometry().topLeft()
-		event.accept()
+			localPos = event.position().toPoint()
+			for button in (self.buttonMin, self.buttonMax, self.buttonClose):
+				buttonRect = button.geometry()
+				buttonRect.translate(0, 0)
+				if button.geometry().contains(localPos):
+					event.ignore()
+					return
+			event.ignore()
+		else:
+			event.ignore()
 
 	def mouseMoveEvent(self, event):
-		if self.dragPosition is not None and event.buttons() & Qt.MouseButton.LeftButton:
-			self.window().move(event.globalPosition().toPoint() - self.dragPosition)
-		event.accept()
+		event.ignore()
 
 	def mouseReleaseEvent(self, event):
-		self.dragPosition = None
-		event.accept()
+		event.ignore()
 
 	def makeButton(self, color: str, slot) -> QPushButton:
 		button = QPushButton()
@@ -126,7 +134,7 @@ class TitleBar(QWidget):
 		else:
 			w.showMaximized()
 
-	def close(self):
+	def closeWindow(self):
 		self.window().close()
 
 	def paintEvent(self, event):
@@ -232,12 +240,22 @@ class QuiverDialog(QDialog):
 
 class MainWindow(QMainWindow):
 	CONTENT_MARGIN = BorderOverlay.MARGIN + 2
+	RESIZE_MARGIN = 14
 	def __init__(self, appFont: QFont):
 		super().__init__()
 		self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 		self.editor = EditorQt()
 		self.editor.qtWindow = self
 		self.appFont = appFont
+
+		self.dragging = False
+		self.dragOffset = None
+
+		self.resizing = False
+		self.resizeDir = None
+		self.resizeStart = None
+		self.resizeGeo = None
+		self.setMouseTracking(True)
 
 		margin = self.CONTENT_MARGIN
 
@@ -288,11 +306,19 @@ class MainWindow(QMainWindow):
 		self.views.setFocus()
 
 	def applyQtTheme(self, themeDef: dict):
+		self.editor.themeDither = themeDef.get("dither", False)
 		from frontend.qt.amigaPalette import getColor
 		explorerBg			= getColor("EXPLORER_BG")
 		explorerFg			= getColor("EXPLORER_FG")
 		explorerSelectBg	= getColor("EXPLORER_SELECT_BG")
 		explorerSelectFg	= getColor("EXPLORER_SELECT_FG")
+
+		for view in self.views.paneContainer.paneViews:
+			view.backgroundImage = None
+			view.backgroundImageSize = None
+			view.backgroundImagePath = None
+			view.gutterImage = None
+			view.gutterImageSize = None
 
 		listQss = (
 			"QListWidget { background: " + explorerBg + "; color: " + explorerFg + "; "
@@ -336,6 +362,22 @@ class MainWindow(QMainWindow):
 						save(self.editor)
 		event.accept()
 
+	def resizeDirection(self, globalPos):
+		geo = self.frameGeometry()
+		x, y = globalPos.x() - geo.x(), globalPos.y() - geo.y()
+		w, h = geo.width(), geo.height()
+		m = self.RESIZE_MARGIN
+		left	= x < m
+		right	= x > w - m
+		top		= y < m
+		bottom	= y > h - m
+		if not any([left, right, top, bottom]):
+			return None
+		return (
+			-1 if left else (1 if right else 0),
+			-1 if top else (1 if bottom else 0)
+		)
+
 	def resizeEvent(self, event):
 		super().resizeEvent(event)
 		if hasattr(self, "border"):
@@ -348,13 +390,78 @@ class MainWindow(QMainWindow):
 		self.border.raise_()
 		self.views.paneContainer.paneViews[0].setFocus()
 
+	def mousePressEvent(self, event):
+		if event.button() == Qt.MouseButton.LeftButton:
+			direction = self.resizeDirection(event.globalPosition().toPoint())
+			if direction is not None and direction != (0, 0):
+				self.resizing = True
+				self.resizeDir = direction
+				self.resizeStart = event.globalPosition().toPoint()
+				self.resizeGeo = self.frameGeometry()
+				event.accept()
+				return
+			titleBottom = self.CONTENT_MARGIN + self.titleBar.height()
+			if event.position().y() < titleBottom:
+				self.windowHandle().startSystemMove()
+				event.accept()
+				return
+		super().mousePressEvent(event)
+
+	def mouseMoveEvent(self, event):
+		if self.resizing and event.buttons() & Qt.MouseButton.LeftButton:
+			delta = event.globalPosition().toPoint() - self.resizeStart
+			geo = self.resizeGeo
+			dx, dy = self.resizeDir
+			x, y, w, h = geo.x(), geo.y(), geo.width(), geo.height()
+			if dx == -1:
+				newW = max(self.minimumWidth(), w - delta.x())
+				newX = x + w - newW
+			elif dx == 1:
+				newW = max(self.minimumWidth(), w + delta.x())
+				newX = x
+			else:
+				newW = w
+				newX = x
+
+			if dy == -1:
+				newH = max(self.minimumHeight(), h - delta.y())
+				newY = y + h - newH
+			elif dy == 1:
+				newH = max(self.minimumHeight(), h + delta.y())
+				newY = y
+			else:
+				newH = h
+				newY = y
+			self.setGeometry(newX, newY, newW, newH)
+			event.accept()
+			return
+		direction = self.resizeDirection(event.position().toPoint())
+		if direction:
+			dx, dy = direction
+			if dx != 0 and dy != 0:
+				self.setCursor(Qt.CursorShape.SizeFDiagCursor if dx == dy else Qt.CursorShape.SizeBDiagCursor)
+			elif dx != 0:
+				self.setCursor(Qt.CursorShape.SizeHorCursor)
+			else:
+				self.setCursor(Qt.CursorShape.SizeVerCursor)
+		else:
+			self.unsetCursor()
+		super().mouseMoveEvent(event)
+
+	def mouseReleaseEvent(self, event):
+		self.dragging = False
+		self.resizing = False
+		self.resizeDir = None
+		self.unsetCursor()
+		super().mouseReleaseEvent(event)
+
 	def newFileQt(self):
 		if self.pane.buffer.modified:
 			outcome = QuiverDialog.ask(
 			"UNSAVED CHANGES",
 			f"'{self.pane.buffer.name}' has unsaved changes. Would you like to create a new file anyway?",
 			self.appFont, self
-		)
+			)
 			if outcome != "yes":
 				return
 		from core.buffer import Buffer
@@ -367,12 +474,12 @@ class MainWindow(QMainWindow):
 		self.editor.notifyChanged()
 
 	def focusExplorer(self):
-		if self.explorer.isVisible():
-			self.explorer.listWidget.setFocus()
-		else:
-			self.editor.showExplorer = True
-			self.explorer.syncVisibility()
-			self.explorer.listWidget.setFocus()
+		self.editor.showExplorer = True
+		self.explorer.syncVisibility()
+		self.explorer.rebuild()
+		self.explorer.listWidget.setFocus()
+		if self.explorer.listWidget.count() > 0:
+			self.explorer.listWidget.setCurrentRow(0)
 
 if __name__ == "__main__":
 	app = QApplication(sys.argv)

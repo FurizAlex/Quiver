@@ -11,7 +11,7 @@ class OverlayWidget(QWidget):
 		self.editor = editor
 		self.font = font
 
-		self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+		self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 		self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
 		self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 		self.setFocusPolicy(Qt.FocusPolicy.NoFocus)

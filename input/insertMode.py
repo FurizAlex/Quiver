@@ -64,7 +64,7 @@ def handle(editor, event):
 	key = event.key
 
 	if editor.completionActive:
-		if key == "TAB" or key == "ENTER":
+		if key in ("TAB", "ENTER"):
 			acceptCompletion(editor)
 			return
 		elif key == "ESC":
@@ -80,6 +80,9 @@ def handle(editor, event):
 			editor.completionIndex = min(len(editor.completions) - 1, editor.completionIndex + 1)
 			editor.notifyChanged()
 			return
+		else:
+			editor.completionActive = False
+			editor.completions = []
 	if event.ctrl and event.shift:
 		match key.upper():
 			case "LEFT":
@@ -127,7 +130,7 @@ def handle(editor, event):
 					line = buffer.lines[pane.cursorY]
 					x = pane.cursorX
 					start = x
-					while start > 0 and (line[start - 1].isalnum or line[start - 1] == '_'):
+					while start > 0 and (line[start - 1].isalnum() or line[start - 1] == '_'):
 						start -= 1
 					end = x
 					while end < len(line) and (line[end].isalnum() or line[end] == '_'):
@@ -224,10 +227,14 @@ def handle(editor, event):
 						pane.cursorX = prev
 				else:
 					i = x
-					while i > 0 and line[i - 1] in "\t":
+					while i > 0 and line[i - 1] in " \t":
 						i -= 1
-					while i > 0 and line[i - 1] not in " \t":
-						i -= 1
+					if i == x:
+						while i > 0 and line[i - 1] not in " \t":
+							i -= 1
+					elif i > 0:
+						while i > 0 and line[i - 1] not in " \t":
+							i -= 1
 					buffer.lines[pane.cursorY] = line[:i] + line[x:]
 					pane.cursorX = i
 				editor.notifyChanged()
@@ -324,6 +331,23 @@ def handle(editor, event):
 			saveUndo(editor)
 			editor.completionActive = False
 			editor.completions = []
+			if selection.active and hasattr(selection, "allNormalized"):
+				allSelects = selection.allNormalized()
+				if len(allSelects) > 1:
+					for select in reversed(sorted(allSelects, key=lambda s: (s["sy"], s["sx"]))):
+						if select["sy"] == select["ey"]:
+							line = buffer.lines[select["sy"]]
+							buffer.lines[select["sy"]] = line[:select["sx"]] + line[select["ex"]:]
+						else:
+							first = buffer.lines[select["sy"]][:select["sx"]]
+							last = buffer.lines[select["ey"]][select["ex"]:]
+							buffer.lines[select["sy"]:select["ey"] + 1] = [first + last]
+					first = min(allSelects, key=lambda s: (s["sy"], s["sx"]))
+					pane.cursorX = first["sx"]
+					pane.cursorY = first["sy"]
+					selection.clear()
+					editor.notifyChanged()
+					return
 			if selection.active:
 				deleteSelection(editor)
 			elif pane.cursorX > 0:
@@ -386,12 +410,15 @@ def handle(editor, event):
 			moveEnd(buffer, pane)
 			editor.notifyChanged()
 		case _:
-			if len(key) == 1 and not event.ctrl and not event.alt and key not in PAIRS.values():
+			if len(key) == 1 and not event.ctrl and not event.alt:
 				saveUndo(editor)
 				line = buffer.lines[pane.cursorY]
 				closers = set(PAIRS.values())
-				if (key in closers and pane.cursorX < len(line) and line[pane.cursorX] == key):
-					pane.cursorX += 1
+				if key in closers and pane.cursorX < len(line) and line[pane.cursorX] == key:
+					if key not in ('"', "'") or not selection.active:
+						pane.cursorX += 1
+						editor.notifyChanged()
+						return
 				if key in PAIRS:
 					if selection.active:
 						select = selection.normalized()

@@ -171,19 +171,23 @@ class Editor:
 
 	def updateScroll(self):
 		pane = self.pane
-		visibleHeight = (self.layout.paneVisibleHeight())
+
+		if hasattr(self, "signals"):
+			visibleLines = max(1, getattr(pane, "visibleLines", 30))
+			visibleCols = max(1, getattr(pane, "visibleCols", 80))
+		else:
+			visibleLines = self.layout.paneVisibleHeight()
+			visibleCols = self.layout.paneWidth() - self.layout.lineNumberWidth - 2
 
 		if pane.cursorY < pane.scrollY:
 			pane.scrollY = pane.cursorY
-		elif pane.cursorY >= (pane.scrollY + self.layout.paneVisibleHeight()):
-			pane.scrollY = (pane.cursorY - self.layout.paneVisibleHeight() + 1)
-		
-		visibleWidth = (self.layout.paneWidth() - self.layout.lineNumberWidth - 2)
+		elif pane.cursorY >= pane.scrollY + visibleLines:
+			pane.scrollY = pane.cursorY - visibleLines + 1
 		
 		if pane.cursorX < pane.scrollX:
 			pane.scrollX = pane.cursorX
-		elif pane.cursorX >= (pane.scrollX + visibleWidth):
-			pane.scrollX = (pane.cursorX - visibleWidth + 1)
+		elif pane.cursorX >= pane.scrollX + visibleCols:
+			pane.scrollX = pane.cursorX - visibleCols + 1
 
 	def refreshExplorer(self):
 		try:

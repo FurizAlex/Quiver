@@ -55,48 +55,44 @@ class Explorer(QWidget):
 
 		self.header = ExplorerHeader(editor, font)
 
+		metrics = QFontMetrics(font)
+		buttonH = metrics.height() + 4
+
 		self.backButton = QPushButton("← ..")
 		self.backButton.setFont(font)
-		self.backButton.setFixedHeight(QFontMetrics(font).height() + 4)
-		self.backButton.setStyleSheet(
-			"QPushButton { background: #0000AA; color: white; "
-			"border: none; border-bottom: 1px solid #3333AA; "
-			"text-align: left; padding-left: 6px; }"
-			"QPushButton:hover { background: #0000CC; }"
-		)
+		self.backButton.setFixedHeight(buttonH)
 		self.backButton.clicked.connect(self.goBack)
+
+		self.newFolderButton = QPushButton("+ DIR")
+		self.newFolderButton.setFont(font)
+		self.newFolderButton.setFixedHeight(QFontMetrics(font).height() + 4)
+		self.newFolderButton.setFixedWidth(metrics.horizontalAdvance("+ DIR") + 20)
+		self.newFolderButton.clicked.connect(self.createFolder)
+
+		buttonRowWidget = QWidget()
+		buttonRowWidget.setFixedHeight(buttonH)
+		buttonRowLayout = QHBoxLayout(buttonRowWidget)
+		buttonRowLayout.setContentsMargins(0, 0, 0, 0)
+		buttonRowLayout.setSpacing(0)
+		buttonRowLayout.addWidget(self.backButton, stretch=1)
+		buttonRowLayout.addWidget(self.newFolderButton)
 
 		self.listWidget = QListWidget()
 		self.listWidget.setObjectName("explorer")
 		self.listWidget.setFont(font)
 		self.listWidget.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
-		self.listWidget.setStyleSheet(
-			"QListWidget { background: #0000AA; color: white; border: none; outline: none; }"
-			"QListWidget::item { background: #0000AA; color: white; padding: 1px 4px; }"
-			"QListWidget::item:selected { background: white; color: #0000AA; }"
-			"QListWidget::item:hover { background: #0000CC; color: white; }"
-		)
-		self.listWidget.viewport().setStyleSheet("background: #0000AA;")
 		self.listWidget.itemClicked.connect(self.openSelectedFile)
 		self.listWidget.installEventFilter(self)
-
-		self.newFolderButton = QPushButton("+ DIR")
-		self.newFolderButton.setFont(font)
-		self.newFolderButton.setFixedHeight(QFontMetrics(font).height() + 4)
-		self.newFolderButton.clicked.connect(self.createFolder)
-
-		buttonRow = QHBoxLayout()
-		buttonRow.setContentsMargins(0, 0, 0, 0)
-		buttonRow.setSpacing(0)
-		buttonRow.addWidget(self.backButton, stretch=1)
-		buttonRow.addWidget(self.newFolderButton)
-
-		buttonRowWidget = QWidget()
-		buttonRowWidget.setLayout(buttonRow)
 
 		layout.addWidget(self.header)
 		layout.addWidget(buttonRowWidget)
 		layout.addWidget(self.listWidget, stretch=1)
+
+		from PyQt6.QtCore import QTimer
+		self.refreshTimer = QTimer()
+		self.refreshTimer.setInterval(2000)
+		self.refreshTimer.timeout.connect(self.autoRefresh)
+		self.refreshTimer.start()
 
 		editor.signals.changed.connect(self.syncVisibility)
 		editor.signals.changed.connect(self.updateStyle)
@@ -141,6 +137,20 @@ class Explorer(QWidget):
 			self.rebuild()
 			self.editor.notifyChanged()
 
+	def autoRefresh(self):
+		import os
+		path = self.editor.explorerPath
+		try:
+			current = sorted(os.listdir(path))
+			existing = [
+				self.listWidget.item(i).data(Qt.ItemDataRole.UserRole)
+				for i in range(self.listWidget.count())
+			]
+			if current != existing:
+				self.rebuild()
+		except Exception:
+			pass
+
 	def rebuild(self):
 		self.listWidget.clear()
 		path = self.editor.explorerPath
@@ -153,6 +163,8 @@ class Explorer(QWidget):
 				self.listWidget.addItem(item)
 		except Exception:
 			pass
+		if self.listWidget.count() > 0:
+			self.listWidget.setCurrentRow(0)
 
 	def openSelectedFile(self, item):
 		name = item.data(Qt.ItemDataRole.UserRole)
@@ -163,6 +175,11 @@ class Explorer(QWidget):
 		else:
 			openFileBuffer(self.editor, filepath)
 			self.editor.notifyChanged()
+
+	def focusExplorer(self):
+		self.listWidget.setFocus()
+		if self.listWidget.count() > 0 and self.listWidget.currentRow() == -1:
+			self.listWidget.setCurrentRow(0)
 
 	def eventFilter(self, obj, event):
 		from PyQt6.QtCore import QEvent
@@ -196,6 +213,13 @@ class Explorer(QWidget):
 					panes[w.editor.activePane].setFocus()
 				return
 			w = w.parent()
+		from PyQt6.QtWidgets import QApplication
+		for widget in QApplication.topLevelWidgets():
+			if hasattr(widget, "views"):
+				panes = widget.views.paneContainer.paneViews
+				if panes:
+					panes[widget.editor.activePane].setFocus()
+				return
 
 	def createFolder(self):
 		from PyQt6.QtWidgets import QInputDialog

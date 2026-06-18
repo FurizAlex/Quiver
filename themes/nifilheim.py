@@ -1,5 +1,10 @@
 THEME = {
     "meta": {"name": "Niflheim", "author": "FurizAlex"},
+	"dither":            True,
+    "gradient": [
+        (0.0,  "#13636F"),
+        (1.0,  "#000000"),
+    ],
     "defaults":          {"fg": "white",   "bg": "black"},
     "text":              {"fg": "white",   "bg": "black"},
     "keyword":           {"fg": "cyan",    "bg": "black", "bold": True},

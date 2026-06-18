@@ -58,26 +58,25 @@ class TabBar(QWidget):
 			painter.drawText(x + 8, metrics.ascent() + 4, name)
 
 	def tabAt(self, mouseX):
-		if not self.tabRects:
-			self.rebuildTabRects()
+		self.rebuildTabRects()
 		for x, w, i in self.tabRects:
 			if x <= mouseX < x + w:
 				return i
 		return -1
 	
 	def mousePressEvent(self, event):
+		self.rebuildTabRects()
 		mouseX = event.position().x()
 		index = self.tabAt(mouseX)
 		if index == -1:
 			return
 		if event.button() == Qt.MouseButton.LeftButton:
 			self.dragIndex = index
-			self.editor.currentBuffer = index
-			self.editor.pane.buffer = self.editor.buffers[index]
-			self.editor.pane.cursorX = 0
-			self.editor.pane.cursorY = 0
-			self.editor.updateScroll()
-			self.editor.notifyChanged()
+			if 0 <= index < len(self.editor.buffers):
+				self.editor.currentBuffer = index
+				self.editor.pane.buffer = self.editor.buffers[index]
+				self.editor.updateScroll()
+				self.editor.notifyChanged()
 		elif event.button() == Qt.MouseButton.MiddleButton:
 			self.closeTab(index)
 
@@ -87,17 +86,19 @@ class TabBar(QWidget):
 		if not (event.buttons() & Qt.MouseButton.LeftButton):
 			self.dragIndex = -1
 			return
+		self.rebuildTabRects()
 		mouseX = event.position().x()
 		target = self.tabAt(mouseX)
 		if target != -1 and target != self.dragIndex:
 			buffers = self.editor.buffers
-			buffers[self.dragIndex], buffers[target] = buffers[target], buffers[self.dragIndex]
-			if self.editor.currentBuffer == self.dragIndex:
-				self.editor.currentBuffer = target
-			elif self.editor.currentBuffer == target:
-				self.editor.currentBuffer = self.dragIndex
-			self.dragIndex = target
-			self.editor.notifyChanged()
+			if (0 <= self.dragIndex < len(buffers) and 0 <= target < len(buffers)):
+				buffers[self.dragIndex], buffers[target] = buffers[target], buffers[self.dragIndex]
+				if self.editor.currentBuffer == self.dragIndex:
+					self.editor.currentBuffer = target
+				elif self.editor.currentBuffer == target:
+					self.editor.currentBuffer = self.dragIndex
+				self.dragIndex = target
+				self.editor.notifyChanged()
 
 	def mouseReleaseEvent(self, event):
 		self.dragIndex = -1

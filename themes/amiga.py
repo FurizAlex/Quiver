@@ -1,5 +1,6 @@
 THEME = {
     "meta": {"name": "Amiga", "author": "FurizAlex"},
+	"background_image":  "assets/background/hill_field.jpg",
     "defaults":          {"fg": "white",   "bg": "black"},
     "text":              {"fg": "white",   "bg": "black"},
     "keyword":           {"fg": "yellow",  "bg": "black", "bold": True},

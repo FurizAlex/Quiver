@@ -1,11 +1,11 @@
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QSplitter, QPlainTextEdit, QVBoxLayout
-from PyQt6.QtGui import QPainter, QColor, QFontDatabase, QFont, QFontMetrics, QTextFormat
+from PyQt6.QtGui import QPainter, QColor, QFontDatabase, QFont, QFontMetrics, QTextFormat, QImage
 from PyQt6.QtWidgets import QTextEdit
 
 from frontend.qt.paneContainer import PaneContainer
 from frontend.qt.overlay import OverlayWidget
-from frontend.qt.amigaPalette import getColor
+from frontend.qt.amigaPalette import getColor, buildDitherImage, loadBackgroundImage
 from frontend.qt.qtTranslator import translateKey
 from syntax.lexer import Lexer
 
@@ -57,6 +57,12 @@ class PaneView(QWidget):
 		self.cursorTargetScaleY = 1.0
 		self.lastCursorRow = 0
 
+		self.backgroundImage = None
+		self.backgroundImageSize = None
+		self.backgroundImagePath = None
+		self.gutterImage = None
+		self.gutterImageSize = None
+
 		self.cursorAnimX = None
 		self.cursorAnimY = None
 		self.cursorTargetX = 0
@@ -74,11 +80,24 @@ class PaneView(QWidget):
 		metrics = QFontMetrics(font)
 		self.gutterWidth = metrics.horizontalAdvance("0000") + 40
 		self.textX = self.gutterWidth + self.TEXT_PADDING
+		pane.lineHeight = metrics.height()
+		pane.charWidth = metrics.horizontalAdvance("M")
 		self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 		editor.signals.changed.connect(self.update)
 
+	def updateVisibleDimensions(self):
+		metrics = QFontMetrics(self.font)
+		lineHeight = metrics.height()
+		charWidth = metrics.horizontalAdvance("M")
+		textAreaW = self.width() - self.textX
+		self.pane.lineHeight = lineHeight
+		self.pane.charWidth = charWidth
+		self.pane.visibleLines = max(1, self.height() // lineHeight)
+		self.pane.visibleCols = max(1, textAreaW // charWidth)
+
 	def paintEvent(self, event):
 		try:
+			self.updateVisibleDimensions()
 			painter = QPainter(self)
 			painter.setFont(self.font)
 			self.drawBackground(painter)
@@ -113,11 +132,11 @@ class PaneView(QWidget):
 			return
 
 		if self.pane.cursorY != self.lastCursorRow:
-			self.cursorScaleY = 0.35
+			self.cursorScaleY = 0.08
 			self.lastCursorRow = self.pane.cursorY
 			self.cursorTrail.clear()
 		
-		self.cursorScaleY += (1.0 - self.cursorScaleY) * 0.2
+		self.cursorScaleY += (1.0 - self.cursorScaleY) * 0.12
 		speed = 0.3
 		dx = tx - self.cursorAnimX
 		dy = ty - self.cursorAnimY
@@ -134,15 +153,52 @@ class PaneView(QWidget):
 		self.update()
 
 	def drawBackground(self, painter):
-		painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
+		from frontend.qt.amigaPalette import palette, buildDitherImage
+		gradient = palette.get("GRADIENT")
+		useDither = palette.get("DITHER", False)
+		backgroundPath = palette.get("BACKGROUND_IMAGE")
+		w, h = self.width(), self.height()
+
+		if useDither and gradient:
+			if self.backgroundImageSize != (w, h):
+				self.backgroundImage = buildDitherImage(w, h, gradient)
+				self.backgroundImageSize = (w, h)
+				self.backgroundImagePath = "gradient"
+			painter.drawImage(0, 0, self.backgroundImage)
+		elif backgroundPath:
+			if self.backgroundImageSize != (w, h) or self.backgroundImagePath != backgroundPath:
+				self.backgroundImage		= loadBackgroundImage(backgroundPath, w, h)
+				self.backgroundImageSize	= (w, h)
+				self.backgroundImagePath	= backgroundPath
+			if self.backgroundImage and not self.backgroundImage.isNull():
+				painter.drawImage(0, 0, self.backgroundImage)
+			else:
+				painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
+		else:
+			self.backgroundImage = None
+			self.backgroundImageSize = None
+			self.backgroundImagePath = None
+			painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
 
 	def drawGutter(self, painter):
+		from frontend.qt.amigaPalette import palette, buildDitherImage
 		painter.setFont(self.font)
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		pane = self.pane
+		gradient = palette.get("GRADIENT")
+		useDither = palette.get("DITHER", False)
+		backgroundPath = palette.get("BACKGROUND_IMAGE")
+		gw, gh = self.gutterWidth, self.height()
 
-		painter.fillRect(0, 0, self.gutterWidth, self.height(), QColor(getColor("GUTTER")))
+		if (useDither and gradient) or backgroundPath:
+			if self.backgroundImageSize == (self.width(), gh) and self.backgroundImage is not None:
+				painter.drawImage(0, 0, self.backgroundImage, 0, 0, gw, gh)
+			else:
+				painter.fillRect(0, 0, gw, gh, QColor(getColor("GUTTER")))
+			painter.fillRect(0, 0, gw, gh, 140)
+		else:
+			painter.fillRect(0, 0, gw, gh, QColor(getColor("GUTTER")))
 
 		visibleCount = self.height() // lineHeight + 1
 		for i in range(visibleCount):
@@ -176,9 +232,7 @@ class PaneView(QWidget):
 						bufferX += 1
 						continue
 					if ch == "\t":
-						tabStop = self.editor.settings.tabSize
-						col = (x - self.gutterWidth - 8) // charWidth
-						spaces = tabStop - (col % tabStop)
+						spaces = self.editor.settings.tabSize - (bufferX % self.editor.settings.tabSize)
 						x += charWidth * spaces
 						bufferX += 1
 					else:
@@ -240,13 +294,19 @@ class PaneView(QWidget):
 		self.editor.completionY = y
 
 	def drawCurrentLine(self, painter):
+		from frontend.qt.amigaPalette import palette
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		visibleY = self.pane.cursorY - self.pane.scrollY
 		if visibleY < 0:
 			return
 		y = visibleY * lineHeight
-		painter.fillRect(self.gutterWidth + 1, y, self.width() - self.gutterWidth - 1, lineHeight, QColor(getColor("CURRENT_LINE")))
+		useDither = palette.get("DITHER", False)
+		gradient = palette.get("GRADIENT")
+		if useDither and gradient:
+			painter.fillRect(self.gutterWidth + 1, y, self.width() - self.gutterWidth - 1, lineHeight, QColor(255, 255, 255, 18))
+		else:
+			painter.fillRect(self.gutterWidth + 1, y, self.width() - self.gutterWidth - 1, lineHeight, QColor(getColor("CURRENT_LINE")))
 
 	def drawSelection(self, painter):
 		pane = self.pane
@@ -305,43 +365,60 @@ class PaneView(QWidget):
 		self.cursorChanged.emit(self.pane.cursorY + 1, self.pane.cursorX + 1)
 
 	def mousePressEvent(self, event):
-		self.editor.activePane = self.paneIndex
 		self.setFocus()
-		row, col = self.pixelToRowCol(event.position().x(), event.position().y())
-		self.pane.cursorX = col
-		self.pane.cursorY = row
-		self.dragStartRow = row
-		self.dragStartCol = col
-		self.dragging = True
-		self.editor.selection.clear()
-		self.editor.updateScroll()
-		self.editor.notifyChanged()
-		self.cursorChanged.emit(row + 1, col + 1)
+		self.editor.activePane = self.paneIndex
+		if event.button() == Qt.MouseButton.LeftButton:
+			row, col = self.pixelToRowCol(event.position().x(), event.position().y())
+			self.pane.cursorY = row
+			self.pane.cursorX = col
+			self.editor.selection.clear()
+
+			self.mouseSelecting = True
+			self.editor.notifyChanged()
+		event.accept()
 
 	def mouseMoveEvent(self, event):
-		if getattr(self, "dragging", False):
+		if getattr(self, 'mouseSelecting', False) and event.buttons() & Qt.MouseButton.LeftButton:
 			row, col = self.pixelToRowCol(event.position().x(), event.position().y())
 			if not self.editor.selection.active:
-				if row != self.dragStartRow or col != self.dragStartCol:
-					self.editor.selection.begin(self.dragStartCol, self.dragStartRow)
-			if self.editor.selection.active:
-				self.editor.selection.update(col, row)
-				self.pane.cursorX = col
-				self.pane.cursorY = row
-				self.editor.notifyChanged()
+				self.editor.selection.begin(self.pane.cursorX, self.pane.cursorY)
+			self.editor.selection.update(col, row)
+			self.pane.cursorX = col
+			self.pane.cursorY = row
+			self.editor.notifyChanged()
+		event.accept()
+
+	def focusNextPrevChild(self, next):
+		return False
 
 	def mouseReleaseEvent(self, event):
-		self.dragging = False
-		self.editor.notifyChanged()
+		self.mouseSelecting = False
+		event.accept()
 
 	def wheelEvent(self, event):
-		delta = event.angleDelta().y()
-		lines = 3
-		if delta > 0:
-			self.pane.scrollY = max(0, self.pane.scrollY - lines)
+		delta = event.angleDelta()
+		shift = event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+		if shift:
+			amount = delta.y()
+			cols = max(1, abs(amount) // 40)
+			if amount > 0:
+				self.pane.scrollX = max(0, self.pane.scrollX - cols)
+			else:
+				self.pane.scrollX = max(0, self.pane.scrollX + cols)
 		else:
-			maxScroll = max(0, len(self.pane.buffer.lines) - 1)
-			self.pane.scrollY = min(maxScroll, self.pane.scrollY + lines)
+			if delta.y() != 0:
+				lines = max(1, abs(delta.y()) // 40)
+				if delta.y() > 0:
+					self.pane.scrollY = max(0, self.pane.scrollY - lines)
+				else:
+					maxScroll = (max(0, len(self.pane.buffer.lines) - 1))
+					self.pane.scrollY = min(maxScroll, self.pane.scrollY + lines)
+				if delta.x() != 0:
+					cols = max(1, abs(delta.x()) // 40)
+					if delta.x() > 0:
+						self.pane.scrollX = max(0, self.pane.scrollX - cols)
+					else:
+						self.pane.scrollX = self.pane.scrollX + cols
 		self.editor.notifyChanged()
 
 	def storeCursorScreenPos(self):
