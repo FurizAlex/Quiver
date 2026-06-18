@@ -321,25 +321,52 @@ class PaneView(QWidget):
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
 		visibleCount = self.height() // lineHeight + 1
+
+		def bufferColToVisualCol(line, col):
+			visual = 0
+			for i, ch in enumerate(line):
+				if i >= col:
+					break
+				if ch == "\t":
+					visual += self.editor.settings.tabSize - (visual % self.editor.settings.tabSize)
+				else:
+					visual += 1
+			return visual
+
 		for visibleLine in range(visibleCount):
 			bufferY = pane.scrollY + visibleLine
+			if bufferY >= len(pane.buffer.lines):
+				break
+			line = pane.buffer.lines[bufferY]
 			for norm in selection.allNormalized():
 				if norm["sy"] <= bufferY <= norm["ey"]:
 					sc = norm["sx"] if bufferY == norm["sy"] else 0
 					ec = norm["ex"] if bufferY == norm["ey"] else len(pane.buffer.lines[bufferY])
-					x = self.textX + (sc - pane.scrollX) * charWidth
-					w = (ec - sc) * charWidth
+
+					scVisual = bufferColToVisualCol(line, sc)
+					ecVisual = bufferColToVisualCol(line, ec)
+
+					x = self.textX + (scVisual - pane.scrollX) * charWidth
+					w = (ecVisual - scVisual) * charWidth
 					painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, QColor(getColor("SELECTION")))
-					try:
-						line = pane.buffer.lines[bufferY]
-						painter.setPen(QColor(getColor("SELECTION_TEXT")))
-						for col in range(sc, ec):
-							if col < pane.scrollX or col >= len(line):
-								continue
-							cx = self.textX + (col - pane.scrollX) * charWidth
-							painter.drawText(cx, visibleLine * lineHeight + metrics.ascent(), line[col])
-					except IndexError:
-						pass
+					painter.setPen(QColor(getColor("SELECTION_TEXT")))
+					visualCol = scVisual
+					for col in range(sc, min(ec, len(line))):
+						if visualCol < pane.scrollX:
+							ch = line[col]
+							if ch == "\t":
+								visualCol += self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
+							else:
+								visualCol += 1
+							continue
+						ch = line[col]
+						if ch == "\t":
+							spaces = self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
+							visualCol += spaces
+						else:
+							cx = self.textX + (visualCol - pane.scrollX) * charWidth
+							painter.drawText(cx, visibleLine * lineHeight + metrics.ascent(), ch)
+							visualCol += 1
 
 	def tokenColor(self, tokenType):
 		mapping = {

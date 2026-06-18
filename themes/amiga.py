@@ -3,7 +3,7 @@ THEME = {
 	"background_image":  "assets/background/hill_field.jpg",
     "defaults":          {"fg": "white",   "bg": "black"},
     "text":              {"fg": "white",   "bg": "black"},
-    "keyword":           {"fg": "blue",  "bg": "black", "bold": True},
+    "keyword":           {"fg": "aqua",  "bg": "black", "bold": True},
     "string":            {"fg": "cyan",    "bg": "black"},
     "comment":           {"fg": "white",   "bg": "black", "dim": True},
     "number":            {"fg": "blue",  "bg": "black"},

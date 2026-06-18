@@ -39,18 +39,18 @@ palette = {
 
 CURSES_TO_HEX = {
 	"black":		"#000000",
-	"red":			"#CC0000",
-	"lime":			"#00FF00",
-	"green":		"#00CC00",
+	"red":			"#AA0000",
+	"lime":			"#55FF55",
+	"green":		"#00AA00",
 	"dark green":	"#087000",
-	"yellow":		"#CCCC00",
+	"yellow":		"#AAAA00",
 	"blue":			"#0000AA",
-	"aqua":			"#05696B",			
+	"aqua":			"#55FFFF",			
 	"magenta":		"#AA00AA",
-	"cyan":			"#008F8F",
+	"cyan":			"#00AAAA",
 	"white":		"#FFFFFF",
-	"grey":			"#D1D1D1",
-	"dark grey":	"#808080",
+	"grey":			"#AAAAAA",
+	"dark grey":	"#555555",
 	"default":		"#FFFFFF",
 }
 

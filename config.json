@@ -2,7 +2,7 @@
     "settings": {
         "tab_width": 4,
         "use_tabs": true,
-        "theme": "quiver",
+        "theme": "amiga",
         "line_numbers": true,
         "relative_numbers": false,
         "auto_indent": true,

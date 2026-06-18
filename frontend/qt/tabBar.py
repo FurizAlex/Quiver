@@ -74,7 +74,11 @@ class TabBar(QWidget):
 			self.dragIndex = index
 			if 0 <= index < len(self.editor.buffers):
 				self.editor.currentBuffer = index
-				self.editor.pane.buffer = self.editor.buffers[index]
+				newBuffer = self.editor.buffers[self.editor.currentBuffer]
+				self.editor.pane.buffer = newBuffer
+				self.editor.pane.cursorY = min(self.editor.pane.cursorY, len(newBuffer.lines) - 1)
+				self.editor.pane.cursorX = min(self.editor.pane.cursorX, len(newBuffer.lines[self.editor.pane.cursorY]))
+				self.editor.pane.scrollY = min(self.editor.pane.scrollY, max(0, len(newBuffer.lines) - 1))
 				self.editor.updateScroll()
 				self.editor.notifyChanged()
 		elif event.button() == Qt.MouseButton.MiddleButton:
@@ -126,5 +130,9 @@ class TabBar(QWidget):
 				return
 		self.editor.buffers.pop(index)
 		self.editor.currentBuffer = min(self.editor.currentBuffer, len(self.editor.buffers) - 1)
-		self.editor.pane.buffer = self.editor.buffers[self.editor.currentBuffer]
+		newBuffer = self.editor.buffers[self.editor.currentBuffer]
+		self.editor.pane.buffer = newBuffer
+		self.editor.pane.cursorY = min(self.editor.pane.cursorY, len(newBuffer.lines) - 1)
+		self.editor.pane.cursorX = min(self.editor.pane.cursorX, len(newBuffer.lines[self.editor.pane.cursorY]))
+		self.editor.pane.scrollY = min(self.editor.pane.scrollY, max(0, len(newBuffer.lines) - 1))
 		self.editor.notifyChanged()
