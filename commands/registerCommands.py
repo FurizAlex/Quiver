@@ -35,6 +35,11 @@ def registerCommands(registry):
 	
 	registry.register("select_theme", listThemes, "Select Theme", "Settings")
 	
+	def openDocsCommand(editor):
+		if hasattr(editor, "qtWindow"):
+			editor.qtWindow.openDocs()
+	registry.register("open_docs", openDocsCommand, "Open Documentation", "Help")
+
 	def quitEditor(editor):
 		editor.saveConfig()
 		editor.running = False

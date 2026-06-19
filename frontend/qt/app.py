@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 from frontend.qt.qtTheme import loadQtTheme
 from frontend.qt.editorQt import EditorQt
+from frontend.qt.docsViewer import DocsOverlay
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSplitter, QSplitterHandle, QHBoxLayout, QPushButton, QLabel, QDialog
 from PyQt6.QtGui import QFontDatabase, QFont, QFontMetrics, QPainter, QColor, QPen, QIcon
@@ -274,6 +275,9 @@ class MainWindow(QMainWindow):
 		self.tabBar = TabBar(self.editor, appFont)
 		self.views = EditorView(self.editor, appFont)
 
+		self.docsOverlay = DocsOverlay(self.editor, appFont, parent=root)
+		self.docsOverlay.hide()
+
 		splitter = DashedSpliiter(Qt.Orientation.Horizontal)
 		splitter.setHandleWidth(8)
 		splitter.addWidget(self.explorer)
@@ -306,6 +310,12 @@ class MainWindow(QMainWindow):
 		self.editor.signals.changed.connect(self.updateWindowTitle)
 		self.statusBarWidget.updateState(self.editor)
 		self.views.setFocus()
+
+	def positionDocsOverlay(self):
+		titleBottom = self.titleBar.y() + self.titleBar.height()
+		rootSize = self.centralWidget().size()
+		self.docsOverlay.move(0, titleBottom)
+		self.docsOverlay.resize(rootSize.width(), rootSize.height() - titleBottom)
 
 	def applyQtTheme(self, themeDef: dict):
 		self.editor.themeDither = themeDef.get("dither", False)
@@ -385,6 +395,8 @@ class MainWindow(QMainWindow):
 		if hasattr(self, "border"):
 			self.border.resize(self.centralWidget().size())
 			self.border.raise_()
+		if hasattr(self, "docsOverlay"):
+			self.positionDocsOverlay()
 
 	def showEvent(self, event):
 		super().showEvent(event)
@@ -474,6 +486,11 @@ class MainWindow(QMainWindow):
 		self.editor.pane.cursorX = 0
 		self.editor.pane.cursorY = 0
 		self.editor.notifyChanged()
+
+	def openDocs(self):
+		self.positionDocsOverlay()
+		self.docsOverlay.raise_()
+		self.docsOverlay.show()
 
 	def focusExplorer(self):
 		self.editor.showExplorer = True

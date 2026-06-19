@@ -124,6 +124,9 @@ def handle(editor, event):
 			case "G":
 				editor.gotoMode = True
 				editor.gotoInput = ""
+			case "H":
+				if hasattr(editor, "qtWindow"):
+					editor.qtWindow.openDocs()
 			case "D":
 				saveUndo(editor)
 				if not selection.active:
