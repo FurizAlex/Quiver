@@ -63,6 +63,11 @@ class PaneView(QWidget):
 		self.gutterImage = None
 		self.gutterImageSize = None
 
+		self.resizeDebounce = QTimer()
+		self.resizeDebounce.setSingleShot(True)
+		self.resizeDebounce.setInterval(120)
+		self.resizeDebounce.timeout.connect(self.rebuildBackgroundImage)
+
 		self.cursorAnimX = None
 		self.cursorAnimY = None
 		self.cursorTargetX = 0
@@ -156,24 +161,27 @@ class PaneView(QWidget):
 
 	def drawBackground(self, painter):
 		from frontend.qt.amigaPalette import palette, buildDitherImage
-		gradient = palette.get("GRADIENT")
-		useDither = palette.get("DITHER", False)
-		backgroundPath = palette.get("BACKGROUND_IMAGE")
+		gradient 		= palette.get("GRADIENT")
+		useDither 		= palette.get("DITHER", False)
+		backgroundPath 	= palette.get("BACKGROUND_IMAGE")
 		w, h = self.width(), self.height()
 
 		if useDither and gradient:
-			if self.backgroundImageSize != (w, h):
+			if self.backgroundImageSize != (w, h) or self.backgroundImagePath != "gradient":
 				self.backgroundImage = buildDitherImage(w, h, gradient)
 				self.backgroundImageSize = (w, h)
 				self.backgroundImagePath = "gradient"
 			painter.drawImage(0, 0, self.backgroundImage)
+
 		elif backgroundPath:
-			if self.backgroundImageSize != (w, h) or self.backgroundImagePath != backgroundPath:
+			if self.backgroundImagePath != backgroundPath or self.backgroundImage is None:
 				self.backgroundImage		= loadBackgroundImage(backgroundPath, w, h)
 				self.backgroundImageSize	= (w, h)
 				self.backgroundImagePath	= backgroundPath
+			if self.backgroundImageSize != (w, h):
+				self.resizeDebounce.start()
 			if self.backgroundImage and not self.backgroundImage.isNull():
-				painter.drawImage(0, 0, self.backgroundImage)
+				painter.drawImage(self.rect(), self.backgroundImage)
 				painter.fillRect(self.rect(), QColor(0, 0, 0, 180))
 			else:
 				painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
@@ -182,6 +190,17 @@ class PaneView(QWidget):
 			self.backgroundImageSize = None
 			self.backgroundImagePath = None
 			painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
+
+	def rebuildBackgroundImage(self):
+		from frontend.qt.amigaPalette import palette, loadBackgroundImage
+		backgroundPath = palette.get("BACKGROUND_IMAGE")
+		if not backgroundPath:
+			return
+		w, h = self.width(), self.height()
+		self.backgroundImage	= loadBackgroundImage(backgroundPath, w, h)
+		self.backgroundImageSize = (w, h)
+		self.backgroundImagePath = backgroundPath
+		self.update()
 
 	def drawGutter(self, painter):
 		from frontend.qt.amigaPalette import palette, buildDitherImage

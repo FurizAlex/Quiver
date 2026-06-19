@@ -188,6 +188,7 @@ class QuiverDialog(QDialog):
 			button.setFont(font)
 			button.setFixedHeight(font.pointSize() * 3)
 			button.setMinimumWidth(80)
+			button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 			button.setStyleSheet(
 				f"QPushButton {{ background: {background}; color: {foreground}; border: none; }}"
 				f"QPushButton:hover {{ background: {paletteFg}; color: {paletteBg}; }}"

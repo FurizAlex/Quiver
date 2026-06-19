@@ -18,10 +18,13 @@ def save(editor):
 	editor.plugins.dispatchSave(editor)
 	
 def openFileBuffer(editor, filename):
+	absFilename = os.path.abspath(filename)
 	for i, buffer in enumerate(editor.buffers):
-		if buffer.filename == filename:
+		if buffer.filename and os.path.abspath(buffer.filename) == absFilename:
 			editor.currentBuffer = i
 			editor.pane.buffer = editor.buffers[i]
+			editor.pane.cursorY = min(editor.pane.cursorY, len(editor.buffers[i].lines) - 1)
+			editor.pane.cursorX = min(editor.pane.cursorX, len(editor.buffers[i].lines[editor.pane.cursorY]))
 			editor.status = (f"Switched to {filename}")
 			trackRecent(editor, filename)
 			return
@@ -46,6 +49,7 @@ def openFileBuffer(editor, filename):
 
 	editor.status = f"Opened {filename}"
 	trackRecent(editor, filename)
+	editor.notifyChanged()
 
 def trackRecent(editor, filename):
 	absPath = os.path.abspath(filename)

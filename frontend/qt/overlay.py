@@ -85,7 +85,6 @@ class OverlayWidget(QWidget):
 		rowHeight = metrics.height() + 4
 		maxVisible = 12
 		totalItems = len(items)
-		visibleItems = min(totalItems, maxVisible)
 
 		select = self.editor.paletteSelection
 		offset = getattr(self.editor, "paletteScrollOffset", 0)
@@ -97,7 +96,8 @@ class OverlayWidget(QWidget):
 
 		visibleSlice = items[offset: offset + maxVisible]
 
-		boxWidth = min(self.width() - 100, 560)
+		inputWidth = metrics.horizontalAdvance("> " + self.editor.paletteInput + "_") + 20
+		boxWidth = min(self.width() - 60, max(680, inputWidth + 40))
 		boxHeight = rowHeight + 6 + rowHeight + 8 + len(visibleSlice) * rowHeight + rowHeight + 16
 		boxX = (self.width() - boxWidth) // 2
 		boxY = max(10, (self.height() - boxHeight) // 3)
@@ -139,7 +139,15 @@ class OverlayWidget(QWidget):
 		painter.drawLine(boxX + 4, cy, boxX + boxWidth - 4, cy)
 		cy += 6
 
-		painter.drawText(boxX + 8, cy + metrics.ascent(), "> " + self.editor.paletteInput + "_")
+		inputText = "> " + self.editor.paletteInput + "_"
+		maxInputWidth = boxWidth - 16
+		if metrics.horizontalAdvance(inputText) > maxInputWidth:
+			prefix = "> "
+			body = self.editor.paletteInput + "_"
+			while metrics.horizontalAdvance(prefix + body) > maxInputWidth and len(body) > 1:
+				body = body[1:]
+			inputText = prefix + body
+		painter.drawText(boxX + 8, cy + metrics.ascent(), inputText)
 		cy += rowHeight + 4
 
 		painter.drawLine(boxX + 4, cy, boxX + boxWidth - 4, cy)
@@ -152,7 +160,11 @@ class OverlayWidget(QWidget):
 				painter.setPen(QColor(selectFg))
 			else:
 				painter.setPen(QColor(paletteFg))
-			painter.drawText(boxX + 10, cy + metrics.ascent(), item["name"])
+			name = item["name"]
+			maxNameWidth = boxWidth - 20
+			while metrics.horizontalAdvance(name) > maxNameWidth and len(name) > 4:
+				name = name[:-4] + "..."
+			painter.drawText(boxX + 10, cy + metrics.ascent(), name)
 			cy += rowHeight
 		if totalItems > maxVisible:
 			painter.setPen(QColor(hintFg))
