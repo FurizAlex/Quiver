@@ -32,4 +32,5 @@ THEME = {
     "searchBar":         {"fg": "black",    "bg": "white"},
     "splitter":          {"fg": "white",     "bg": "black",  "dim": True},
     "activeSplitter":    {"fg": "white",  "bg": "black"},
+	"cursor":			 {"fg": "aqua", "bg": "white"},
 }

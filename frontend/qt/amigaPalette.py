@@ -163,13 +163,15 @@ def applyThemeToQt(themeDefinition: dict):
 	fg = CURSES_TO_HEX.get(defaults.get("fg", "white"), "#FFFFFF")
 
 	def foreground(token, fallback=None):
-		style = themeDefinition.get(token, {})
+		style = themeDefinition.get(token)
+		if style is None:
+			return fallback or foreground
 		return CURSES_TO_HEX.get(style.get("fg", defaults.get("fg", "white")), fallback or fg)
 	
 	def background(token, fallback=None):
 		style = themeDefinition.get(token, {})
 		return CURSES_TO_HEX.get(style.get("bg", defaults.get("bg", "black")), fallback or bg)
-	
+
 	palette["BACKGROUND"]			= bg
 	palette["TEXT"]					= fg
 	palette["KEYWORD"]				= foreground("keyword")
@@ -192,6 +194,8 @@ def applyThemeToQt(themeDefinition: dict):
 	palette["STATUS_BG"]			= background("statusBar", bg)
 	palette["STATUS_FG"]			= foreground("statusBar", fg)
 
+	palette["RAW_THEME"]			= themeDefinition
+
 	palette["PALETTE_BG"]			= background("paletteBorder", "#000000")
 	palette["PALETTE_FG"]			= foreground("paletteItem", fg)
 	palette["PALETTE_SELECT_BG"]	= background("paletteSelection", fg)
@@ -208,4 +212,14 @@ def applyThemeToQt(themeDefinition: dict):
 	palette["TAB_FG"]           	= foreground("tab", fg)
 	palette["TAB_ACTIVE_BG"]    	= background("activeTab", bg)
 	palette["TAB_ACTIVE_FG"]    	= foreground("activeTab", fg)
-	palette["CURSOR"]				= "#00FF00"
+	palette["CURSOR"]				= foreground("cursor", "#00FF00")
+
+def getColorForLanguage(key: str, languageName: str):
+		theme = palette.get("RAW_THEME")
+		if theme and languageName:
+			overrides = theme.get("language_overrides", {})
+			languageOverride = overrides.get(languageName.lower())
+			if languageOverride and key.lower() in languageOverride:
+				colorName = languageOverride[key.lower()]
+				return CURSES_TO_HEX.get(colorName, palette.get(key, "#FFFFFF"))
+		return palette.get(key, "#FFFFFF")

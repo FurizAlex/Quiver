@@ -83,6 +83,24 @@ def handle(editor, event):
 		else:
 			editor.completionActive = False
 			editor.completions = []
+	if event.alt and not event.ctrl and not event.shift:
+		match key.upper():
+			case "UP":
+				saveUndo(editor)
+				y = pane.cursorY
+				if y > 0:
+					buffer.lines[y - 1], buffer.lines[y] = buffer.lines[y], buffer.lines[y - 1]
+					pane.cursorY -= 1
+				editor.notifyChanged()
+				return
+			case "DOWN":
+				saveUndo(editor)
+				y = pane.cursorY
+				if y < len(buffer.lines) - 1:
+					buffer.lines[y + 1], buffer.lines[y] = buffer.lines[y], buffer.lines[y + 1]
+					pane.cursorY += 1
+				editor.notifyChanged()
+				return
 	if event.ctrl and event.shift:
 		match key.upper():
 			case "LEFT":
@@ -101,6 +119,26 @@ def handle(editor, event):
 				startOrUpdateSelection(editor)
 				moveDown(buffer, pane)
 				selection.update(pane.cursorX, pane.cursorY)
+			case "D":
+				saveUndo(editor)
+				if selection.active:
+					select = selection.normalized()
+					if select["sy"] == select["ey"]:
+						line = buffer.lines[select["sy"]]
+						buffer.lines.insert(select["sy"] + 1, lines)
+						pane.cursorY = select["sy"] + 1
+					else:
+						chunk = buffer.lines[select["sy"]:select["ey"] + 1]
+						insertAt = select["ey"] + 1
+						for offset, l in enumerate(chunk):
+							buffer.lines.insert(insertAt + offset, l)
+						pane.cursorY = select["ey"] + 1 + (select["ey"] - select["sy"])
+					selection.clear()
+				else:
+					line = buffer.lines[pane.cursorY]
+					buffer.lines.insert(pane.cursorY + 1, line)
+					pane.cursorY += 1
+				selection.clear()
 		editor.notifyChanged()
 		return
 	if event.ctrl and not event.shift:
@@ -400,8 +438,14 @@ def handle(editor, event):
 			if selection.active:
 				deleteSelection(editor)
 			elif pane.cursorX > 0:
-				buffer.deleteChar(pane.cursorX, pane.cursorY)
-				pane.cursorX -= 1
+				line = buffer.lines[pane.cursorY]
+				isCode = buffer.language and buffer.language.name.lower() != "text"
+				if isCode and pane.cursorX < len(line) and line[pane.cursorX - 1] in PAIRS and line[pane.cursorX] == PAIRS[line[pane.cursorX - 1]]:
+					buffer.lines[pane.cursorY] = line[:pane.cursorX - 1] + line[pane.cursorX + 1:]
+					pane.cursorX -= 1
+				else:
+					buffer.deleteChar(pane.cursorX, pane.cursorY)
+					pane.cursorX -= 1
 			elif pane.cursorY > 0:
 				prev = len(buffer.lines[pane.cursorY - 1])
 				buffer.mergeLine(pane.cursorY)

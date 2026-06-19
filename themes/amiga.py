@@ -24,4 +24,8 @@ THEME = {
     "searchBar":         {"fg": "black",   "bg": "white"},
     "splitter":          {"fg": "white",   "bg": "black"},
     "activeSplitter":    {"fg": "blue",  "bg": "black"},
+	"language_overrides": {
+    "python": {"cursor": "yellow"},
+    "markdown": {"cursor": "white", "selection": "grey"},
+	},
 }

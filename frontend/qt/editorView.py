@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QSplitter, QPlainTextEdit, QVB
 from PyQt6.QtGui import QPainter, QColor, QFontDatabase, QFont, QFontMetrics, QTextFormat, QImage
 from PyQt6.QtWidgets import QTextEdit
 
+from frontend.qt.amigaPalette import getColorForLanguage
+
 from frontend.qt.paneContainer import PaneContainer
 from frontend.qt.overlay import OverlayWidget
 from frontend.qt.amigaPalette import getColor, buildDitherImage, loadBackgroundImage
@@ -62,6 +64,14 @@ class PaneView(QWidget):
 		self.backgroundImagePath = None
 		self.gutterImage = None
 		self.gutterImageSize = None
+
+		self.transitionTimer = QTimer()
+		self.transitionTimer.setInterval(16)
+		self.transitionTimer.timeout.connect(self.tickTransition)
+		self.transitionProgress = 1.0
+		self.transitionDuration = 300
+		self.transitionElapsed = 0
+		self.previousBackgroundImage = None
 
 		self.resizeDebounce = QTimer()
 		self.resizeDebounce.setSingleShot(True)
@@ -159,6 +169,23 @@ class PaneView(QWidget):
 		self.cursorAnimY += dy * speed
 		self.update()
 
+	def startThemeTransition(self):
+		if self.backgroundImage is not None:
+			self.previousBackgroundImage = self.backgroundImage.copy()
+		else:
+			self.previousBackgroundImage = None
+		self.transitionProgress = 0.0
+		self.transitionElapsed = 0
+		self.transitionTimer.start()
+
+	def tickTransition(self):
+		self.transitionElapsed += 16
+		self.transitionProgress = min(1.0, self.transitionElapsed / self.transitionDuration)
+		if self.transitionProgress >= 1.0:
+			self.transitionTimer.stop()
+			self.previousBackgroundImage = None
+		self.update()
+
 	def drawBackground(self, painter):
 		from frontend.qt.amigaPalette import palette, buildDitherImage
 		gradient 		= palette.get("GRADIENT")
@@ -171,8 +198,7 @@ class PaneView(QWidget):
 				self.backgroundImage = buildDitherImage(w, h, gradient)
 				self.backgroundImageSize = (w, h)
 				self.backgroundImagePath = "gradient"
-			painter.drawImage(0, 0, self.backgroundImage)
-
+			newImage = self.backgroundImage
 		elif backgroundPath:
 			if self.backgroundImagePath != backgroundPath or self.backgroundImage is None:
 				self.backgroundImage		= loadBackgroundImage(backgroundPath, w, h)
@@ -180,16 +206,34 @@ class PaneView(QWidget):
 				self.backgroundImagePath	= backgroundPath
 			if self.backgroundImageSize != (w, h):
 				self.resizeDebounce.start()
-			if self.backgroundImage and not self.backgroundImage.isNull():
-				painter.drawImage(self.rect(), self.backgroundImage)
-				painter.fillRect(self.rect(), QColor(0, 0, 0, 180))
-			else:
-				painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
+			newImage = self.backgroundImage
 		else:
 			self.backgroundImage = None
 			self.backgroundImageSize = None
 			self.backgroundImagePath = None
-			painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
+			newImage = None
+
+		progress = getattr(self, "transitionProgress", 1.0)
+		previousImage = getattr(self, "previousBackgroundImage", None)
+
+		if progress < 1.0 and previousImage is not None:
+			painter.setOpacity(1.0 - progress)
+			painter.drawImage(self.rect(), previousImage)
+			painter.setOpacity(progress)
+			if newImage:
+				painter.drawImage(self.rect(), newImage)
+			else:
+				painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
+			painter.setOpacity(1.0)
+			if backgroundPath:
+				painter.fillRect(self.rect(), QColor(0, 0, 0, 180))
+		else:
+			if newImage:
+				painter.drawImage(self.rect(), newImage)
+				if backgroundPath:
+					painter.fillRect(self.rect(), QColor(0, 0, 0, 180))
+			else:
+				painter.fillRect(self.rect(), QColor(getColor("BACKGROUND")))
 
 	def rebuildBackgroundImage(self):
 		from frontend.qt.amigaPalette import palette, loadBackgroundImage
@@ -318,7 +362,8 @@ class PaneView(QWidget):
 		x = int(self.cursorAnimX)
 		y = int(self.cursorAnimY)
 
-		cursorColor = QColor(getColor("CURSOR"))
+		languageName = pane.buffer.language.name if pane.buffer.language else None
+		cursorColor = QColor(getColorForLanguage("CURSOR", languageName))
 		for i, (tx, ty) in enumerate(self.cursorTrail):
 			alpha = int(160 * (i + 1) / max(len(self.cursorTrail), 1))
 			trailColor = QColor(cursorColor)
@@ -327,7 +372,7 @@ class PaneView(QWidget):
 			trailYOff = (lineHeight - trailH) // 2
 			painter.fillRect(int(tx), int(ty) + trailYOff, charWidth, trailH, trailColor)
 
-		painter.fillRect(x, y + yOffset, charWidth, scaledH, QColor(getColor("CURSOR")))
+		painter.fillRect(x, y + yOffset, charWidth, scaledH, cursorColor)
 		try:
 			ch = pane.buffer.lines[pane.cursorY][pane.cursorX]
 		except IndexError:
@@ -364,6 +409,9 @@ class PaneView(QWidget):
 		charWidth = metrics.horizontalAdvance("M")
 		visibleCount = self.height() // lineHeight + 1
 
+		languageName = pane.buffer.language.name if pane.buffer.language else None
+		selectionColor = QColor(getColorForLanguage("SELECTION"), languageName)
+
 		def bufferColToVisualCol(line, col):
 			visual = 0
 			for i, ch in enumerate(line):
@@ -390,7 +438,7 @@ class PaneView(QWidget):
 
 					x = self.textX + (scVisual - pane.scrollX) * charWidth
 					w = (ecVisual - scVisual) * charWidth
-					painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, QColor(getColor("SELECTION")))
+					painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, selectionColor)
 					painter.setPen(QColor(getColor("SELECTION_TEXT")))
 					visualCol = scVisual
 					for col in range(sc, min(ec, len(line))):
