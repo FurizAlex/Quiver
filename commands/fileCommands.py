@@ -11,11 +11,20 @@ def save(editor):
 		editor.pane.buffer.modified = False
 		editor.status = result
 		editor.statusTimer = 120
+		invalidateDiffCache(editor, editor.pane.buffer)
 	else:
 		editor.saving = True
 		editor.saveInput = ""
 		editor.status = "Save as: "
 	editor.plugins.dispatchSave(editor)
+
+def invalidateDiffCache(editor, buffer):
+	if not editor.settings.gitDiffEnabled:
+		return
+	if hasattr(editor, "qtWindow"):
+		for view in editor.qtWindow.views.paneContainer.paneViews:
+			if view.pane.buffer is buffer:
+				view.diffCacheFile = None
 	
 def openFileBuffer(editor, filename):
 	absFilename = os.path.abspath(filename)

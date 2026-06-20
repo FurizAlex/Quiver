@@ -139,6 +139,11 @@ def handle(editor, event):
 					buffer.lines.insert(pane.cursorY + 1, line)
 					pane.cursorY += 1
 				selection.clear()
+			case "Z":
+				if hasattr(editor, "qtWindow"):
+					editor.qtWindow.toggleZenMode()
+				editor.notifyChanged()
+				return
 		editor.notifyChanged()
 		return
 	if event.ctrl and not event.shift:
@@ -440,7 +445,8 @@ def handle(editor, event):
 			elif pane.cursorX > 0:
 				line = buffer.lines[pane.cursorY]
 				isCode = buffer.language and buffer.language.name.lower() != "text"
-				if isCode and pane.cursorX < len(line) and line[pane.cursorX - 1] in PAIRS and line[pane.cursorX] == PAIRS[line[pane.cursorX - 1]]:
+				bracketRemovalSetting = editor.settings.bracketAutoRemoveEnabled
+				if isCode and bracketRemovalSetting and pane.cursorX < len(line) and line[pane.cursorX - 1] in PAIRS and line[pane.cursorX] == PAIRS[line[pane.cursorX - 1]]:
 					buffer.lines[pane.cursorY] = line[:pane.cursorX - 1] + line[pane.cursorX + 1:]
 					pane.cursorX -= 1
 				else:

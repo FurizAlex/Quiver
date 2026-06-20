@@ -7,7 +7,7 @@ THEME = {
     ],
     "defaults":          {"fg": "white",   "bg": "black"},
     "text":              {"fg": "white",   "bg": "black"},
-    "keyword":           {"fg": "cyan",    "bg": "black", "bold": True},
+    "keyword":           {"fg": "aqua",    "bg": "black", "bold": True},
     "string":            {"fg": "blue",    "bg": "black"},
     "comment":           {"fg": "white",   "bg": "black", "dim": True},
     "number":            {"fg": "cyan",    "bg": "black"},

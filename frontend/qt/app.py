@@ -47,6 +47,28 @@ class DashedHandle(QSplitterHandle):
 		cx = self.width() // 2
 		painter.drawLine(cx, 0, cx, self.height())
 
+		if self.underMouse() or getattr(self.splitter(), "dragging", False):
+			splitter	= self.splitter()
+			sizes		= splitter.sizes()
+			label		= " / ".join(str(s) for s in sizes)
+			painter.setPen(QColor("#FFFF00"))
+			from PyQt6.QtGui import QFontMetrics
+			fm = QFontMetrics(painter.font())
+			tw = fm.horizontalAdvance(label)
+			painter.drawText((self.width() - tw) // 2, self.height() // 2, label)
+
+	def mousePressEvent(self, event):
+		self.splitter().dragging = True
+		super().mousePressEvent(event)
+		
+	def mouseReleaseEvent(self, event):
+		self.splitter().dragging = False
+		super().mouseReleaseEvent(event)
+
+	def mouseMoveEvent(self, event):
+		super().mouseMoveEvent(event)
+		self.update()
+
 class BorderOverlay(QWidget):
 	MARGIN = 12
 	def __init__(self, parent):
@@ -325,7 +347,10 @@ class MainWindow(QMainWindow):
 		explorerSelectBg	= getColor("EXPLORER_SELECT_BG")
 		explorerSelectFg	= getColor("EXPLORER_SELECT_FG")
 
+		transitionsOn = self.editor.settings.themeTransitionsEnabled
+
 		for view in self.views.paneContainer.paneViews:
+			if transitionsOn: view.startThemeTransition()
 			view.backgroundImage = None
 			view.backgroundImageSize = None
 			view.backgroundImagePath = None
@@ -372,6 +397,13 @@ class MainWindow(QMainWindow):
 					else:
 						self.editor.pane.buffer = buffer
 						save(self.editor)
+		if self.editor.settings.sessionRestoreEnabled:
+			session = {
+				"buffers": [b.filename for b in self.editor.buffers if b.filename],
+				"activeIndex": self.editor.currentBuffer,
+			}
+			self.editor.settings.set("session", session)
+		self.editor.saveConfig()
 		event.accept()
 
 	def resizeDirection(self, globalPos):
@@ -487,6 +519,17 @@ class MainWindow(QMainWindow):
 		self.editor.pane.cursorY = 0
 		self.editor.notifyChanged()
 
+	def toggleZenMode(self):
+		zen = not getattr(self, "zenMode", False)
+		self.zenMode = zen
+		self.tabBar.setVisible(not zen)
+		self.statusBarWidget.setVisible(not zen)
+		if zen:
+			self.editor.showExplorer = False
+			self.explorer.syncVisibility()
+		else:
+			self.explorer.syncVisibility()
+
 	def openDocs(self):
 		self.positionDocsOverlay()
 		self.docsOverlay.raise_()
@@ -524,6 +567,18 @@ if __name__ == "__main__":
 		window.applyQtTheme(themeModule.THEME)
 	except Exception:
 		pass
+	if window.editor.settings.sessionRestoreEnabled:
+		session = window.editor.settings.get("session", None)
+		if session and session.get("buffers"):
+			from commands.fileCommands import openFileBuffer
+			import os
+			for path in session["buffers"]:
+				if path and os.path.exists(path):
+					openFileBuffer(window.editor, path)
+			activeIndex = session.get("activeIndex", 0)
+			if 0 <= activeIndex < len(window.editor.buffers):
+				window.editor.currentBuffer = activeIndex
+				window.editor.pane.buffer = window.editor.buffers[activeIndex]
 	window.setWindowIcon(icon)
 	window.show()
 	window.editor.resize(window.width(), window.height())

@@ -40,3 +40,23 @@ class Settings:
 	@property
 	def wrapText(self):
 		return self.values.get("wrap_text", False)
+	
+	@property
+	def gitDiffEnabled(self):
+		return self.values.get("git_diff_enabled", True)
+	
+	@property
+	def themeTransitionsEnabled(self):
+		return self.values.get("theme_transitions_enabled", False)
+	
+	@property
+	def bracketAutoRemoveEnabled(self):
+		return self.values.get("bracket_auto_remove_enabled", True)
+	
+	@property
+	def sessionRestoreEnabled(self):
+		return self.values.get("session_restore_enabled", True)
+	
+	@property
+	def cursorTrailEnabled(self):
+		return self.values.get("cursor_trail_enabled", True)

@@ -2,7 +2,7 @@
     "settings": {
         "tab_width": 4,
         "use_tabs": true,
-        "theme": "nifilheim",
+        "theme": "quiver",
         "line_numbers": true,
         "relative_numbers": false,
         "auto_indent": true,
@@ -12,10 +12,17 @@
         "scroll_offset": 5,
         "font_size": 14,
         "show_explorer": true,
+        "git_diff_enabled": true,
+        "theme_transitions_enabled": false,
+        "bracket_auto_remove_enabled": true,
+        "session_restore_enabled": true,
+        "cursor_trail_enabled": true,
         "recentFiles": [
-            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/main.py",
-            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/README.md",
-            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/config.json"
-        ]
+            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/main.py"
+        ],
+        "session": {
+            "buffers": [],
+            "activeIndex": 0
+        }
     }
 }

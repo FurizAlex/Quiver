@@ -246,6 +246,7 @@ class DocsOverlay(QWidget):
 		key = event.key()
 		if key == Qt.Key.Key_Escape:
 			self.hide()
+			self.returnFocusToEditor()
 			self.editor.notifyChanged()
 			return
 		if key == Qt.Key.Key_Up:
@@ -276,3 +277,12 @@ class DocsOverlay(QWidget):
 					self.loadPage(i)
 					break
 		event.accept()
+
+	def returnFocusToEditor(self):
+		if hasattr(self.editor, "qtWindow"):
+			window = self.editor.qtWindow
+			panes = window.views.paneContainer.paneViews
+			if panes:
+				activeIndex = window.editor.activePane
+				if 0 <= activeIndex < len(panes):
+					panes[activeIndex].setFocus()

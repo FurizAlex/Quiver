@@ -78,6 +78,9 @@ class PaneView(QWidget):
 		self.resizeDebounce.setInterval(120)
 		self.resizeDebounce.timeout.connect(self.rebuildBackgroundImage)
 
+		self.diffCache = {}
+		self.diffCacheFile = None
+
 		self.cursorAnimX = None
 		self.cursorAnimY = None
 		self.cursorTargetX = 0
@@ -158,7 +161,7 @@ class PaneView(QWidget):
 		dx = tx - self.cursorAnimX
 		dy = ty - self.cursorAnimY
 		moved = abs(dx) > 0.5 or abs(dy) > 0.5
-		if moved:
+		if moved and self.editor.settings.cursorTrailEnabled:
 			self.cursorTrail.append((self.cursorAnimX, self.cursorAnimY))
 			if len(self.cursorTrail) > self.TRAIL_LENGTH:
 				self.cursorTrail.pop(0)
@@ -278,6 +281,27 @@ class PaneView(QWidget):
 			x = self.gutterWidth - textWidth - 10
 			y = i * lineHeight + metrics.ascent()
 			painter.drawText(x, y, text)
+
+		if self.editor.settings.gitDiffEnabled:
+			filepath = pane.buffer.filename
+			if filepath != self.diffCacheFile:
+				from util.gitDiff import getDiffLines
+				self.diffCache = getDiffLines(filepath)
+				self.diffCacheFile = filepath
+			for i in range(visibleCount):
+				bufferY = pane.scrollY + i
+				if bufferY >= len(pane.buffer.lines):
+					break
+				diffType = self.diffCache.get(bufferY + 1)
+				if diffType == "added":
+					diffColor = QColor("#55FF55")
+				elif diffType == "removed":
+					diffColor = QColor("#55FF55")
+				else:
+					diffColor = None
+				if diffColor:
+					y = i * lineHeight
+					painter.fillRect(gw - 2, y, 2, lineHeight, diffColor)
 
 		if self.paneIndex == self.editor.activePane and not getattr(self.editor, "explorerFocused", False):
 			painter.fillRect(0, 0, 3, self.height(), QColor(getColor("CURSOR")))
@@ -410,7 +434,7 @@ class PaneView(QWidget):
 		visibleCount = self.height() // lineHeight + 1
 
 		languageName = pane.buffer.language.name if pane.buffer.language else None
-		selectionColor = QColor(getColorForLanguage("SELECTION"), languageName)
+		selectionColor = QColor(getColorForLanguage("SELECTION", languageName))
 
 		def bufferColToVisualCol(line, col):
 			visual = 0

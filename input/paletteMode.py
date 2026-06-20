@@ -1,6 +1,7 @@
 import os
 import curses
 from commands.fileCommands import openFileBuffer
+from commands.settingsCommands import listSettings
 
 def execute(editor):
 	items = filtered(editor)
@@ -45,11 +46,11 @@ def handle(editor, event):
 		if not items:
 			return
 		select = items[min(editor.paletteSelection, len(items) - 1)]
-		if select.get("separator"):
-			return
 		command = select.get("command", "")
 		if editor.paletteMode == "files":
 			path = select.get("path", "")
+			if select.get("separator"):
+				return
 			if os.path.isdir(path):
 				editor.paletteDir = path
 				editor.paletteInput = ""
@@ -65,6 +66,13 @@ def handle(editor, event):
 			editor.paletteOpen = False
 			editor.paletteInput = ""
 			editor.notifyChanged()
+			return
+		elif command.startswith("__setting__"):
+			key = command[len("__setting__"):]
+			current = editor.settings.get(key, True)
+			editor.settings.set(key, not current)
+			editor.saveConfig()
+			listSettings(editor, preserveSelection=True)
 			return
 		elif editor.paletteMode == "commands":
 			if command:

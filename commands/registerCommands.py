@@ -4,6 +4,7 @@ from commands.diagnosticCommands import nextDiagnostic
 from commands.bufferCommands import nextBuffer, previousBuffer, closeBuffer
 from commands.uiCommands import splitPane, closePane, nextPane, toggleExplorer
 from commands.editCommands import undo, redo
+from commands.settingsCommands import listSettings
 
 def newFileCommand(editor):
 	from input.insertMode import newFile
@@ -11,8 +12,6 @@ def newFileCommand(editor):
 
 def registerCommands(registry):
 	registry.register("save_file", save, "Save File", "File")
-	registry.register("next_buffer", nextBuffer, "Next Buffer", "Buffer")
-	registry.register("previous_buffer", previousBuffer, "Previous Buffer", "Buffer")
 	registry.register("new_file", newFileCommand, "New File", "File")
 	registry.register("close_file", closeBuffer, "Close File", "File")
 	registry.register("split_pane", splitPane, "Split Pane", "View")
@@ -20,6 +19,7 @@ def registerCommands(registry):
 	registry.register("next_pane", nextPane, "Next Pane", "View")
 	registry.register("toggle_explorer", toggleExplorer, "Toggle Explorer", "View")
 	registry.register("next_diagnostic", nextDiagnostic, "Next Diagnostic", "Diagnostics")
+	registry.register("open_settings", listSettings, "Settings", "Settings")
 
 	def listThemes(editor):
 		themes = editor.theme.availableThemes()
