@@ -57,12 +57,66 @@ def insertText(editor, text):
 	editor.notifyChanged()
 
 def handle(editor, event):
+	if getattr(editor, "folderInputMode", False):
+		key = event.key
+		if key == "ENTER":
+			import os
+			path = editor.folderInput.strip()
+			if os.path.isdir(path):
+				editor.explorerPath = path
+				editor.explorerFiles = sorted(os.listdir(path))
+				editor.selectedFileIndex = 0
+				editor.status = f"Folder: {path}"
+			else:
+				editor.status = f"Not a folder: {path}"
+			editor.folderInputMode = False
+			editor.folderInput = ""
+			editor.statusTimer = 120
+			editor.notifyChanged()
+			return
+		elif key == "ESC":
+			editor.folderInputMode = False
+			editor.folderInput = ""
+			editor.notifyChanged()
+			return
+		elif key == "BACKSPACE":
+			editor.folderInput = editor.folderInput[:-1]
+			editor.notifyChanged()
+			return
+		elif len(key) == 1 and not event.ctrl:
+			editor.folderInput += key
+			editor.notifyChanged()
+			return
+		else:
+			return
+	if getattr(editor, "splitterResizeMode", False):
+		key = event.key
+		NUDGE = 20
+		if hasattr(editor, "qtWindow"):
+			splitter = editor.qtWindow.views.paneContainer.splitter
+			sizes = splitter.sizes()
+			if key in ("LEFT", "UP") and len(sizes) >= 2:
+				sizes[0] = max(50, sizes[0] - NUDGE)
+				sizes[1] = max(50, sizes[1] + NUDGE)
+				splitter.setSizes(sizes)
+			elif key in ("RIGHT", "DOWN") and len(sizes) >= 2:
+				sizes[0] = max(50, sizes[0] + NUDGE)
+				sizes[1] = max(50, sizes[1] - NUDGE)
+				splitter.setSizes(sizes)
+			elif key in ("ESC", "TAB"):
+				editor.splitterResizeMode = False
+				window = editor.qtWindow
+				panes = window.views.paneContainer.paneViews
+				if panes:
+					panes[editor.activePane].setFocus()
+			editor.notifyChanged()
+		return
+		
 	buffer = editor.pane.buffer
 	pane = editor.pane
 	selection = editor.selection
 	clipboard = editor.clipboard
 	key = event.key
-
 	if editor.completionActive:
 		if key in ("TAB", "ENTER"):
 			acceptCompletion(editor)
@@ -108,6 +162,10 @@ def handle(editor, event):
 					pane.multiCursor.addCursor(targetX, targetY)
 				editor.notifyChanged()
 				return
+			case "S":
+				editor.splitterResizeMode = True
+				editor.status = "RESIZE MODE: ←→ resize, ESC/TAB to exit"
+				return
 	if event.alt and not event.ctrl and not event.shift:
 		match key.upper():
 			case "UP":
@@ -144,6 +202,54 @@ def handle(editor, event):
 				startOrUpdateSelection(editor)
 				moveDown(buffer, pane)
 				selection.update(pane.cursorX, pane.cursorY)
+			case "Z":
+				if hasattr(editor, "qtWindow"):
+					editor.qtWindow.toggleZenMode()
+				editor.notifyChanged()
+				return
+			case "I":
+				buffers = editor.buffers
+				i = editor.currentBuffer
+				if i > 0:
+					buffers[i], buffers[i - 1] = buffers[i - 1], buffers[i]
+					editor.currentBuffer = i - 1
+					editor.notifyChanged()
+				return
+			case "O":
+				buffers = editor.buffers
+				i = editor.currentBuffer
+				if i < len(buffers) - 1:
+					buffers[i], buffers[i + 1] = buffers[i + 1], buffers[i]
+					editor.currentBuffer = i + 1
+					editor.notifyChanged()
+				return
+		editor.notifyChanged()
+		return
+	if event.ctrl and not event.shift:
+		match key.upper():
+			case "S":
+				save(editor)
+			case "Z":
+				undo(editor)
+			case "Y":
+				redo(editor)
+			case "N":
+				nextBuffer(editor)
+			case "B":
+				previousBuffer(editor)
+			case "O":
+				from input.paletteMode import openFilePalette
+				openFilePalette(editor)
+			case "P":
+				from input.paletteMode import openCommandPalette
+				openCommandPalette(editor)
+			case "G":
+				if not editor.completionActive:
+					editor.gotoMode = True
+					editor.gotoInput = ""
+			case "H":
+				if hasattr(editor, "qtWindow"):
+					editor.qtWindow.openDocs()
 			case "D":
 				saveUndo(editor)
 				if not pane.multiCursor.isMulti() and not selection.active:
@@ -190,84 +296,6 @@ def handle(editor, event):
 					editor.status = "NO MORE OCCURRENCES"
 					editor.statusTimer = 120
 					editor.notifyChanged()
-			case "Z":
-				if hasattr(editor, "qtWindow"):
-					editor.qtWindow.toggleZenMode()
-				editor.notifyChanged()
-				return
-		editor.notifyChanged()
-		return
-	if event.ctrl and not event.shift:
-		match key.upper():
-			case "S":
-				save(editor)
-			case "Z":
-				undo(editor)
-			case "Y":
-				redo(editor)
-			case "N":
-				nextBuffer(editor)
-			case "B":
-				previousBuffer(editor)
-			case "O":
-				from input.paletteMode import openFilePalette
-				openFilePalette(editor)
-			case "P":
-				from input.paletteMode import openCommandPalette
-				openCommandPalette(editor)
-			case "G":
-				editor.gotoMode = True
-				editor.gotoInput = ""
-			case "H":
-				if hasattr(editor, "qtWindow"):
-					editor.qtWindow.openDocs()
-			case "D":
-				saveUndo(editor)
-				if not selection.active:
-					line = buffer.lines[pane.cursorY]
-					x = pane.cursorX
-					start = x
-					while start > 0 and (line[start - 1].isalnum() or line[start - 1] == '_'):
-						start -= 1
-					end = x
-					while end < len(line) and (line[end].isalnum() or line[end] == '_'):
-						end += 1
-					if start < end:
-						selection.begin(start, pane.cursorY)
-						selection.update(end, pane.cursorY)
-						pane.cursorX = end
-					editor.notifyChanged()
-					return
-				else:
-					select = selection.normalized()
-					searchText = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
-					if not searchText or "\n" in searchText:
-						return
-					allSelects = selection.allNormalized()
-					lastSelect = allSelects[-1]
-					searchLine = lastSelect["ey"]
-					searchCol = lastSelect["ex"]
-					lineCount = len(buffer.lines)
-					for offset in range(lineCount + 1):
-						lineIndex = (searchLine + offset) % lineCount
-						line = buffer.lines[lineIndex]
-						fromCol = searchCol if (offset == 0) else 0
-						col = line.find(searchText, fromCol)
-						if col == -1:
-							continue
-						already = any(
-							s["sy"] == lineIndex and s["sx"] == col
-							for s in allSelects
-						)
-						selection.addSelection(col, lineIndex, col + len(searchText), lineIndex)
-						pane.cursorY = lineIndex
-						pane.cursorX = col + len(searchText)
-						editor.updateScroll()
-						editor.notifyChanged()
-						return
-					editor.status = "NO MORE OCCURRENCES"
-					editor.statusTimer = 60
-					editor.notifyChanged()
 			case "E":
 				if hasattr(editor, "signals"):
 					if hasattr(editor, "qtWindow"):
@@ -276,10 +304,11 @@ def handle(editor, event):
 					editor.focus = "explorer"
 				editor.notifyChanged()
 			case "F":
-				editor.searchMode = True
-				editor.searchInput = ""
-				editor.searchMatches = []
-				editor.searchMatchIndex = 0
+				if not editor.completionActive:
+					editor.searchMode = True
+					editor.searchInput = ""
+					editor.searchMatches = []
+					editor.searchMatchIndex = 0
 			case "C":
 				if selection.active:
 					if hasattr(selection, "allNormalized") and len(selection.allNormalized()) > 1:
@@ -385,11 +414,8 @@ def handle(editor, event):
 				selection.begin(0, 0)
 				lastLine = len(buffer.lines) - 1
 				selection.update(len(buffer.lines[lastLine]), lastLine)
-			case "D":
-				saveUndo(editor)
-				line = buffer.lines[pane.cursorY]
-				buffer.lines.insert(pane.cursorY + 1, line)
-				pane.cursorY += 1
+				pane.cursorY = lastLine
+				pane.cursorX = len(buffer.lines[lastLine])
 			case "/":
 				saveUndo(editor)
 				line = buffer.lines[pane.cursorY]
@@ -399,11 +425,23 @@ def handle(editor, event):
 					buffer.lines[pane.cursorY] = indent + stripped[1:].lstrip()
 				else:
 					buffer.lines[pane.cursorY] = indent + "# " + stripped
+			case "[":
+				from commands.uiCommands import nextPane
+				nextPane(editor)
+				return
+			case "]":
+				from commands.uiCommands import previousPane
+				previousPane(editor)
+				return
+			case "\\":
+				from commands.uiCommands import closePane
+				closePane(editor)
+				return
 			case "HOME":
 				pane.cursorY = 0
 				pane.cursorX = 0
 			case "END":
-				pane.cursorX = len(buffer.lines) - 1
+				pane.cursorY = len(buffer.lines) - 1
 				pane.cursorX = len(buffer.lines[pane.cursorY])
 			case _:
 				pass
@@ -430,7 +468,6 @@ def handle(editor, event):
 				selection.update(pane.cursorX, pane.cursorY)
 			case "TAB":
 				saveUndo(editor)
-				print("tab")
 				if selection.active:
 					select = selection.normalized()
 					for y in range(select["sy"], select["ey"] + 1):
@@ -644,7 +681,7 @@ def handle(editor, event):
 				else:
 					if selection.active:
 						if hasattr(selection, "allNormalized") and len(selection.allNormalized()) > 1:
-							allSelects = sorted(selection.allNormalized(), key=lambda s: (s["sy"], ["sx"]), reverse=True)
+							allSelects = sorted(selection.allNormalized(), key=lambda s: (s["sy"], s["sx"]), reverse=True)
 							for select in allSelects:
 								if select["sy"] == select["ey"]:
 									line = buffer.lines[select["sy"]]

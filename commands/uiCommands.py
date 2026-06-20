@@ -25,7 +25,24 @@ def closePane(editor):
 	editor.notifyPanesChanged()
 
 def nextPane(editor):
-	editor.activePane = ((editor.activePane + 1) % len(editor.panes))
+	if len(editor.panes) <= 1:
+		return
+	editor.activePane = (editor.activePane + 1) % len(editor.panes)
+	if hasattr(editor, "qtWindow"):
+		panes = editor.qtWindow.views.paneContainer.paneViews
+		if 0 <= editor.activePane < len(panes):
+			panes[editor.activePane].setFocus()
+	editor.notifyChanged()
+
+def previousPane(editor):
+	if len(editor.panes) <= 1:
+		return
+	editor.activePane = (editor.activePane - 1) % len(editor.panes)
+	if hasattr(editor, "qtWindow"):
+		panes = editor.qtWindow.views.paneContainer.paneViews
+		if 0 <= editor.activePane < len(panes):
+			panes[editor.activePane].setFocus()
+	editor.notifyChanged()
 
 def openFolder(editor):
 	if hasattr(editor, "signals"):

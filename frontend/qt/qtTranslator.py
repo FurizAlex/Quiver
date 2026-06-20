@@ -25,6 +25,12 @@ def translateKey(event):
 		key = keymap[event.key()]
 	elif ctrl and Qt.Key.Key_A <= event.key() <= Qt.Key.Key_Z:
 		key = chr(event.key())
+	elif ctrl and event.key() == Qt.Key.Key_BracketLeft:
+		key = "["
+	elif ctrl and event.key() == Qt.Key.Key_BracketRight:
+		key = "]"
+	elif ctrl and event.key() == Qt.Key.Key_Backslash:
+		key = "\\"
 	elif ctrl and event.key() == Qt.Key.Key_Slash:
 		key = "/"
 	elif ctrl and event.key() == Qt.Key.Key_Backspace:

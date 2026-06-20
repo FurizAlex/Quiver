@@ -9,8 +9,10 @@ def openFile(filename):
 			if not lines:
 				return [""]
 			return lines
+	except UnicodeDecodeError:
+		raise
 	except Exception as e:
-		return [f"Error opening file: {e}"]
+		raise
 
 def saveFile(filename, lines):
 	try:

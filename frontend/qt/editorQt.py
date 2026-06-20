@@ -36,8 +36,6 @@ class EditorQt(Editor):
 
 	def handleInput(self, event):
 		super().handleInput(event)
-		if self.status.startswith("KEY="):
-			self.status = ""
 
 	@property
 	def pane(self):

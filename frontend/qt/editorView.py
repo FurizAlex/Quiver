@@ -265,7 +265,8 @@ class PaneView(QWidget):
 				painter.drawImage(0, 0, self.backgroundImage, 0, 0, gw, gh)
 			else:
 				painter.fillRect(0, 0, gw, gh, QColor(getColor("GUTTER")))
-			painter.fillRect(0, 0, gw, gh, QColor(0, 0, 0, 140))
+			if useDither and gradient:
+				painter.fillRect(0, 0, gw, gh, QColor(0, 0, 0, 140))
 		else:
 			painter.fillRect(0, 0, gw, gh, QColor(getColor("GUTTER")))
 
@@ -296,7 +297,7 @@ class PaneView(QWidget):
 				if diffType == "added":
 					diffColor = QColor("#55FF55")
 				elif diffType == "removed":
-					diffColor = QColor("#55FF55")
+					diffColor = QColor("#FF5555")
 				else:
 					diffColor = None
 				if diffColor:

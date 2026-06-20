@@ -136,14 +136,11 @@ class Editor:
 			try:
 				self.handleInput(event)
 			except Exception as e:
-				self.running = False
-				raise
+				self.status = f"ERROR: {e}"
+				self.statusTimer = 180
 
 	def handleInput(self, event):
-		self.status = (
-			f"KEY={event.key} "
-			f"CTRL={event.ctrl}"
-		)
+		self.lastKeyDebug = f"KEY={event.key} CTRL={event.ctrl}"
 		if event.key == "MOUSE":
 			from input.mouseMode import handleMouse
 			handleMouse(self, event)

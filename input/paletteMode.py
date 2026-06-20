@@ -41,6 +41,15 @@ def handle(editor, event):
 		editor.paletteSelection = min(len(items) - 1, newIndex)
 		editor.notifyChanged()
 		return
+	if key == "HOME":
+		editor.paletteSelection = 0
+		editor.notifyChanged()
+		return
+	if key == "END":
+		items = filtered(editor)
+		editor.paletteSelection = max(0, len(items) - 1)
+		editor.notifyChanged()
+		return
 	if key == "ENTER":
 		items = filtered(editor)
 		if not items:

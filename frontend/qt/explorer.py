@@ -84,6 +84,8 @@ class Explorer(QWidget):
 		self.listWidget.setObjectName("explorer")
 		self.listWidget.setFont(font)
 		self.listWidget.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+		self.listWidget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+		self.listWidget.customContextMenuRequested.connect(self.showContextMenu)
 		self.listWidget.itemClicked.connect(self.openSelectedFile)
 		self.listWidget.installEventFilter(self)
 
@@ -99,6 +101,8 @@ class Explorer(QWidget):
 
 		editor.signals.changed.connect(self.syncVisibility)
 		editor.signals.changed.connect(self.updateStyle)
+		self.backButton.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+		self.newFolderButton.setFocusPolicy(Qt.FocusPolicy.TabFocus)
 		self.updateStyle()
 		self.syncVisibility()
 
@@ -197,6 +201,7 @@ class Explorer(QWidget):
 				return False
 			if event.type() == QEvent.Type.KeyPress:
 				key = event.key()
+				mods = event.modifiers()
 				if key == Qt.Key.Key_Escape or key == Qt.Key.Key_Tab:
 					self.returnToEditor()
 					return True
@@ -208,13 +213,108 @@ class Explorer(QWidget):
 					if item:
 						self.openSelectedFile(item)
 					return True
-				if key == Qt.Key.Key_F:
+				if key == Qt.Key.Key_N and mods & Qt.KeyboardModifier.ControlModifier:
 					mods = event.modifiers()
 					if mods & Qt.KeyboardModifier.ControlModifier:
 						self.createFolder()
 						return True
+				if key == Qt.Key.Key_F and mods & Qt.KeyboardModifier.ControlModifier:
+					mods = event.modifiers()
+					if mods & Qt.KeyboardModifier.ControlModifier:
+						self.createFolder()
+						return True
+				if key == Qt.Key.Key_F2:
+					self.renameSelected()
+					return True
+				if key == Qt.Key.Key_Delete:
+					self.deleteSelected()
+					return True
 		return False
 	
+	def renameSelected(self):
+		item = self.listWidget.currentItem()
+		if not item:
+			return
+		oldName = item.data(Qt.ItemDataRole.UserRole)
+		oldPath = os.path.join(self.editor.explorerPath, oldName)
+
+		from PyQt6.QtWidgets import QInputDialog
+		newName, ok = QInputDialog.getText(self, "Rename", "New name: ", text=oldName)
+		if not ok or not newName.strip() or newName.strip() == oldName:
+			return
+		newPath = os.path.join(self.editor.explorerPath, newName.strip())
+		try:
+			os.rename(oldPath, newPath)
+			for buffer in self.editor.buffers:
+				if buffer.filename and os.path.abspath(buffer.filename) == os.path.abspath(oldPath):
+					buffer.filename = newPath
+			self.rebuild()
+			self.editor.status = f"Renamed to {newName.strip()}"
+			self.editor.statusTimer = 120
+			self.editor.notifyChanged()
+		except Exception as e:
+			self.editor.status = f"Rename failed: {e}"
+			self.editor.statusTimer = 120
+			self.editor.notifyChanged()
+
+	def deleteSelected(self):
+		item = self.listWidget.currentItem()
+		if not item:
+			return
+		name = item.data(Qt.ItemDataRole.UserRole)
+		path = os.path.join(self.editor.explorerPath, name)
+
+		from frontend.qt.app import QuiverDialog
+		outcome = QuiverDialog.ask(
+			"DELETE",
+			f"Delete '{name}? This can't be undone.",
+			self.font,
+			self 
+		)
+		if outcome != "yes":
+			return
+		try:
+			if os.path.isdir(path):
+				import shutil
+				shutil.rmtree(path)
+			else:
+				os.remove(path)
+			absPath = os.path.abspath(path)
+			for buffer in list(self.editor.buffers):
+				if buffer.filename and os.path.abspath(buffer.filename) == absPath:
+					index = self.editor.buffers.index(buffer)
+					self.editor.buffers.removee(buffer)
+					self.editor.currentBuffer = min(self.editor.currentBuffer, len(self.editor.buffers) - 1)
+					replacement = self.editor.buffers[self.editor.currentBuffer]
+					for pane in self.editor.panes:
+						if pane.buffer is buffer:
+							pane.buffer = replacement
+			self.rebuild()
+			self.editor.status = f"Deleted {name}"
+			self.editor.statusTimer = 120
+			self.editor.notifyChanged()
+		except Exception as e:
+			self.editor.status = f"Deleted FAILED: {e}"
+			self.editor.statusTimer = 120
+			self.editor.notifyChanged()
+
+	def showContextMenu(self, pos):
+		item = self.listWidget.itemAt(pos)
+		if not item:
+			return
+		self.listWidget.setCurrentItem(item)
+
+		from PyQt6.QtWidgets import QMenu
+		menu = QMenu(self)
+		renameAction = menu.addAction("Rename (F2)")
+		deleteAction = menu.addAction("Delete (Del)")
+
+		chosen = menu.exec(self.listWidget.mapToGlobal(pos))
+		if chosen == renameAction:
+			self.renameSelected()
+		elif chosen == deleteAction:
+			self.deleteSelected()
+
 	def returnToEditor(self):
 		w = self.parent()
 		while w is not None:

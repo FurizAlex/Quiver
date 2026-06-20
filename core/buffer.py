@@ -35,6 +35,8 @@ class Buffer:
 		self.modified = True
 
 	def deleteChar(self, x, y):
+		if x <= 0:
+			return
 		line = self.lines[y]
 	
 		self.lines[y] = (

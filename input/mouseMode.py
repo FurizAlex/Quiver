@@ -32,7 +32,7 @@ def handleMouse(editor, event):
 		editor.focus = "explorer"
 		index = my - 3
 		if 0 <= index < len(editor.explorerFiles):
-			editor.selecteddFileIndex = index
+			editor.selectedFileIndex = index
 			selected = editor.explorerFiles[index]
 			path = os.path.join(editor.explorerPath, selected)
 			if os.path.isdir(path):

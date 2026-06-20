@@ -5,8 +5,6 @@ from core.multiCursor import MultiCursor
 class Pane:
 	def __init__(self, buffer=None):
 		self.buffer = buffer
-		
-		self.cursor = Cursor()
 		self.viewport = Viewport()
 		self.multiCursor = MultiCursor()
 

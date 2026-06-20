@@ -28,6 +28,12 @@ class DocumentManager:
 	def close(self):
 		if len(self.buffers) <= 1:
 			return False
+		closingBuffer = self.buffers[self.current]
 		self.buffers.pop(self.current)
 		self.current = min(self.current, len(self.buffers) - 1)
+		replacement = self.buffers[self.current]
+
+		for pane in getattr(self.editor, "panes", []):
+			if pane.buffer is closingBuffer:
+				pane.buffer = replacement
 		return True

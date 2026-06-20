@@ -165,7 +165,7 @@ def applyThemeToQt(themeDefinition: dict):
 	def foreground(token, fallback=None):
 		style = themeDefinition.get(token)
 		if style is None:
-			return fallback or foreground
+			return fallback or fg
 		return CURSES_TO_HEX.get(style.get("fg", defaults.get("fg", "white")), fallback or fg)
 	
 	def background(token, fallback=None):

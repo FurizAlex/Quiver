@@ -51,6 +51,9 @@ class DashedHandle(QSplitterHandle):
 		cx = self.width() // 2
 		painter.drawLine(cx, 0, cx, self.height())
 
+		if self.hasFocus():
+			painter.fillRect(self.rect(), QColor(255, 255, 0, 40))
+
 		if self.underMouse() or getattr(self.splitter(), "dragging", False):
 			splitter	= self.splitter()
 			sizes		= splitter.sizes()
@@ -63,6 +66,7 @@ class DashedHandle(QSplitterHandle):
 
 	def mousePressEvent(self, event):
 		self.splitter().dragging = True
+		self.setFocus()
 		super().mousePressEvent(event)
 		
 	def mouseReleaseEvent(self, event):
@@ -210,17 +214,20 @@ class QuiverDialog(QDialog):
 		buttonRow.setSpacing(8)
 		buttonRow.addStretch()
 
+		self.buttons = []
+
 		def makeButton(text, foreground, background, callback):
 			button = QPushButton(text)
 			button.setFont(font)
 			button.setFixedHeight(font.pointSize() * 3)
 			button.setMinimumWidth(80)
-			button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+			button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 			button.setStyleSheet(
 				f"QPushButton {{ background: {background}; color: {foreground}; border: none; }}"
 				f"QPushButton:hover {{ background: {paletteFg}; color: {paletteBg}; }}"
 			)
 			button.clicked.connect(callback)
+			self.buttons.append(button)
 			return button
 
 		buttonNo	= makeButton("NO", paletteBg, paletteFg, self.no)
@@ -241,6 +248,35 @@ class QuiverDialog(QDialog):
 
 		self.setFixedWidth(440)
 		self.adjustSize()
+
+		buttonNo.setFocus()
+
+	def keyPressEvent(self, event):
+		key = event.key()
+		if key == Qt.Key.Key_Left:
+			self.cycleFocus(-1)
+			event.accept()
+			return
+		if key == Qt.Key.Key_Right:
+			self.cycleFocus(1)
+			event.accept()
+			return
+		if key == Qt.Key.Key_Escape:
+			self.no()
+			event.accept()
+			return
+		super().keyPressEvent(event)
+
+	def cycleFocus(self, direction):
+		if not self.buttons:
+			return
+		focused = self.focusWidget()
+		if focused in self.buttons:
+			index = self.buttons.index(focused)
+		else:
+			index = 0
+		index = (index + direction) % len(self.buttons)
+		self.buttons[index].setFocus()
 	
 	def yes(self):
 		self.outcome = "yes"
@@ -264,7 +300,14 @@ class QuiverDialog(QDialog):
 				geo.y() + (geo.height() - dialog.height()) // 2
 			)
 		dialog.exec()
-		return dialog.outcome
+		outcome = dialog.outcome
+		if parent and hasattr(parent, "views"):
+			panes = parent.views.paneContainer.paneViews
+			if panes:
+				activeIndex = parent.editor.activePane
+				if 0 <= activeIndex < len(panes):
+					panes[activeIndex].setFocus()
+		return outcome
 
 class MainWindow(QMainWindow):
 	CONTENT_MARGIN = BorderOverlay.MARGIN + 2
@@ -538,12 +581,6 @@ class MainWindow(QMainWindow):
 		self.positionDocsOverlay()
 		self.docsOverlay.raise_()
 		self.docsOverlay.show()
-
-	def loadAppIcon():
-		iconPath = "assets/icons/quiver.png"
-		if os.path.exists(iconPath):
-			return QIcon(iconPath)
-		return QIcon()
 
 	def focusExplorer(self):
 		self.editor.showExplorer = True

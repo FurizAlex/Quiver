@@ -12,7 +12,7 @@ def nextWordEnd(line, pos):
 	match = re.search(r'\w\w*', line[pos + 1:])
 
 	if match:
-		return pos + 1 + match.start()
+		return pos + 1 + match.end()
 	
 	return len(line)
 

@@ -115,6 +115,8 @@ class TabBar(QWidget):
 			buffer.modified = False
 			self.editor.pane.cursorX = 0
 			self.editor.pane.cursorY = 0
+			self.editor.pane.scrollX = 0
+			self.editor.pane.scrollY = 0
 			self.editor.notifyChanged()
 			return
 		buffer = self.editor.buffers[index]
