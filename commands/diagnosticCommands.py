@@ -6,7 +6,7 @@ def nextDiagnostic(editor):
 	current = editor.pane.cursorY
 	for diagnostic in items:
 		if diagnostic.line > current:
-			editor.pane.cursorX = diagnostic.line
+			editor.pane.cursorY = diagnostic.line
 			editor.pane.cursorX = diagnostic.column
 			return
 	first = items[0]

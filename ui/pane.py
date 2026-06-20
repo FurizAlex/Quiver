@@ -1,5 +1,6 @@
 from core.cursor import Cursor
 from core.viewport import Viewport
+from core.multiCursor import MultiCursor
 
 class Pane:
 	def __init__(self, buffer=None):
@@ -7,6 +8,7 @@ class Pane:
 		
 		self.cursor = Cursor()
 		self.viewport = Viewport()
+		self.multiCursor = MultiCursor()
 
 	def moveLeft(self):
 		self.cursorX = max(0, self.cursorX - 1)
@@ -25,13 +27,6 @@ class Pane:
 			maxLines - 1,
 			self.cursorY + 1
 		)
-
-	def splitVertical(self):
-		if self.parent is None:
-			return None
-		newPane = Pane(document=self.documents, parent=self.parent)
-		self.parent.addPane(newPane)
-		return newPane
 
 	@property
 	def x(self):
@@ -67,16 +62,16 @@ class Pane:
 
 	@property
 	def cursorX(self):
-		return self.cursor.x
+		return self.multiCursor.primary.x
 	
 	@cursorX.setter
 	def cursorX(self, value):
-		self.cursor.x = value
+		self.multiCursor.primary.x = value
 	
 	@property
 	def cursorY(self):
-		return self.cursor.y
+		return self.multiCursor.primary.y
 	
 	@cursorY.setter
 	def cursorY(self, value):
-		self.cursor.y = value
+		self.multiCursor.primary.y = value

@@ -44,7 +44,7 @@ class Renderer(RendererBase):
 	def drawText(self, x, y, text, style=0):
 		self.safeAddstr(y, x, text, style)
 
-	def drawLineNumber(self, x1, y1, x2, y2, style=0):
+	def _drawLineNumber(self, x1, y1, x2, y2, style=0):
 		if x1 == x2:
 			for y in range(y1, y2 + 1):
 				self.safeAddstr(y, x1, "|", style)

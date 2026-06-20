@@ -370,24 +370,49 @@ class PaneView(QWidget):
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
 
+		languageName = pane.buffer.language.name if pane.buffer.language else None
+		cursorColor = QColor(getColorForLanguage("CURSOR", languageName))
+
 		if self.cursorAnimX is None:
 			tx, ty = self.cursorPixelPos()
 			self.cursorAnimX = float(tx)
 			self.cursorAnimY = float(ty)
 
-		visibleY = pane.cursorY - pane.scrollY
-		if visibleY < 0:
-			return
-	
-		scaleY = getattr(self, "cursorScaleY", 1.0)
-		scaledH = max(2, int(lineHeight * scaleY))
-		yOffset = (lineHeight - scaledH) // 2
+		for cursor in pane.multiCursor.cursors:
+			isPrimary = (cursor is pane.multiCursor.primary)
+			visibleY = cursor.y - pane.scrollY
+			if visibleY < 0:
+				continue
+			try:
+				line = pane.buffer.lines[cursor.y]
+			except IndexError:
+				continue
+			
+			if isPrimary:
+				x = int(self.cursorAnimX)
+				y = int(self.cursorAnimY)
+				scaleY = getattr(self, "cursorScaleY", 1.0)
+			else:
+				x = self.cursorXToPixel(line, cursor.x)
+				y = visibleY * lineHeight
+				scaleY = 1.0
 
-		x = int(self.cursorAnimX)
-		y = int(self.cursorAnimY)
+			scaledHeight = max(2, int(lineHeight * scaleY))
+			yOffset = (lineHeight - scaledHeight) // 2
 
-		languageName = pane.buffer.language.name if pane.buffer.language else None
-		cursorColor = QColor(getColorForLanguage("CURSOR", languageName))
+			painter.fillRect(x, y + yOffset, charWidth, scaledHeight, cursorColor)
+
+			if isPrimary:
+				try:
+					ch = line[cursor.x]
+				except IndexError:
+					ch = " "
+				if scaleY > 0.6:
+					painter.setPen(QColor(getColor("BACKGROUND")))
+					painter.drawText(int(x), int(y) + metrics.ascent(), ch)
+				self.editor.completionX = x
+				self.editor.completionY = y
+
 		for i, (tx, ty) in enumerate(self.cursorTrail):
 			alpha = int(160 * (i + 1) / max(len(self.cursorTrail), 1))
 			trailColor = QColor(cursorColor)
@@ -395,17 +420,6 @@ class PaneView(QWidget):
 			trailH = max(2, int(lineHeight * (0.3 + 0.7 * (i + 1) / len(self.cursorTrail))))
 			trailYOff = (lineHeight - trailH) // 2
 			painter.fillRect(int(tx), int(ty) + trailYOff, charWidth, trailH, trailColor)
-
-		painter.fillRect(x, y + yOffset, charWidth, scaledH, cursorColor)
-		try:
-			ch = pane.buffer.lines[pane.cursorY][pane.cursorX]
-		except IndexError:
-			ch = " "
-		if scaleY > 0.6:
-			painter.setPen(QColor(getColor("BACKGROUND")))
-			painter.drawText(x, y + metrics.ascent(), ch)
-		self.editor.completionX = x
-		self.editor.completionY = y
 
 	def drawCurrentLine(self, painter):
 		from frontend.qt.amigaPalette import palette
@@ -513,10 +527,14 @@ class PaneView(QWidget):
 		self.editor.activePane = self.paneIndex
 		if event.button() == Qt.MouseButton.LeftButton:
 			row, col = self.pixelToRowCol(event.position().x(), event.position().y())
-			self.pane.cursorY = row
-			self.pane.cursorX = col
+			altHeld = event.modifiers() & Qt.KeyboardModifier.AltModifier
+			if altHeld:
+				self.pane.multiCursor.addCursor(col, row)
+				self.editor.notifyChanged()
+				event.accept()
+				return
+			self.pane.multiCursor.reset(col, row)
 			self.editor.selection.clear()
-
 			self.mouseSelecting = True
 			self.editor.notifyChanged()
 		event.accept()

@@ -83,6 +83,31 @@ def handle(editor, event):
 		else:
 			editor.completionActive = False
 			editor.completions = []
+	if key == "ESC" and pane.multiCursor.isMulti():
+		pane.multiCursor.collapseToPrimary()
+		selection.clear()
+		editor.notifyChanged()
+		return
+	if event.ctrl and event.alt and not event.shift:
+		match key.upper():
+			case "UP":
+				cursors = pane.multiCursor.cursors
+				firstCursor = min(cursors, key=lambda c: c.y)
+				targetY = firstCursor.y - 1
+				if targetY >= 0:
+					targetX = min(firstCursor.x, len(buffer.lines[targetY]))
+					pane.multiCursor.addCursor(targetX, targetY)
+				editor.notifyChanged()
+				return
+			case "DOWN":
+				cursors = pane.multiCursor.cursors
+				lastCursor = max(cursors, key=lambda c: c.y)
+				targetY = lastCursor.y + 1
+				if targetY < len(buffer.lines):
+					targetX = min(lastCursor.x, len(buffer.lines[targetY]))
+					pane.multiCursor.addCursor(targetX, targetY)
+				editor.notifyChanged()
+				return
 	if event.alt and not event.ctrl and not event.shift:
 		match key.upper():
 			case "UP":
@@ -121,24 +146,50 @@ def handle(editor, event):
 				selection.update(pane.cursorX, pane.cursorY)
 			case "D":
 				saveUndo(editor)
-				if selection.active:
-					select = selection.normalized()
-					if select["sy"] == select["ey"]:
-						line = buffer.lines[select["sy"]]
-						buffer.lines.insert(select["sy"] + 1, lines)
-						pane.cursorY = select["sy"] + 1
-					else:
-						chunk = buffer.lines[select["sy"]:select["ey"] + 1]
-						insertAt = select["ey"] + 1
-						for offset, l in enumerate(chunk):
-							buffer.lines.insert(insertAt + offset, l)
-						pane.cursorY = select["ey"] + 1 + (select["ey"] - select["sy"])
-					selection.clear()
-				else:
+				if not pane.multiCursor.isMulti() and not selection.active:
 					line = buffer.lines[pane.cursorY]
-					buffer.lines.insert(pane.cursorY + 1, line)
-					pane.cursorY += 1
-				selection.clear()
+					x = pane.cursorX
+					start = x
+					while start > 0 and (line[start - 1].isalnum() or line[start - 1] == "_"):
+						start -= 1
+					end = x
+					while end < len(line) and (line[end].isalnum() or line[end] == "_"):
+						end += 1
+					if start < end:
+						selection.begin(start, pane.cursorY)
+						selection.update(end, pane.cursorY)
+						pane.cursorX = end
+					editor.notifyChanged()
+					return
+				else:
+					select = selection.normalized()
+					searchText = buffer.getSelection(select["sx"], select["sy"], select["ex"], select["ey"])
+					if not searchText or "\n" in searchText:
+						return
+					lastCursor = pane.multiCursor.cursors[-1]
+					searchLine = lastCursor.y
+					searchCol = lastCursor.x
+					lineCount = len(buffer.lines)
+					for offset in range(lineCount + 1):
+						lineIndex = (searchLine + offset) % lineCount
+						line = buffer.lines[lineIndex]
+						fromColumn = searchCol if (offset == 0) else 0
+						column = line.find(searchText, fromColumn)
+						if column == -1:
+							continue
+						already = any(c.y == lineIndex and c.x == column + len(searchText) for c in pane.multiCursor.cursors)
+						if already:
+							continue
+						pane.multiCursor.addCursor(column + len(searchText), lineIndex)
+						selection.addSelection(column, lineIndex, column + len(searchText), lineIndex)
+						pane.cursorY = lineIndex
+						pane.cursorX = column + len(searchText)
+						editor.updateScroll()
+						editor.notifyChanged()
+						return
+					editor.status = "NO MORE OCCURRENCES"
+					editor.statusTimer = 120
+					editor.notifyChanged()
 			case "Z":
 				if hasattr(editor, "qtWindow"):
 					editor.qtWindow.toggleZenMode()
@@ -377,6 +428,39 @@ def handle(editor, event):
 				startOrUpdateSelection(editor)
 				moveDown(buffer, pane)
 				selection.update(pane.cursorX, pane.cursorY)
+			case "TAB":
+				saveUndo(editor)
+				print("tab")
+				if selection.active:
+					select = selection.normalized()
+					for y in range(select["sy"], select["ey"] + 1):
+						line = buffer.lines[y]
+						if editor.settings.useTabs:
+							if line.startswith("\t"):
+								buffer.lines[y] = line[1:]
+						else:
+							stripCount = 0
+							for ch in line[:editor.settings.tabSize]:
+								if ch == " ":
+									stripCount += 1
+								else:
+									break
+							buffer.lines[y] = line[stripCount:]
+				else:
+					line = buffer.lines[pane.cursorY]
+					if editor.settings.useTabs:
+						if line.startswith("\t"):
+							buffer.lines[pane.cursorY] = line[1:]
+							pane.cursorX = max(0, pane.cursorX - 1)
+					else:
+						stripCount = 0
+						for ch in line[:editor.settings.tabSize]:
+							if ch == " ":
+								stripCount += 1
+							else:
+								break
+						buffer.lines[pane.cursorY] = line[stripCount:]
+						pane.cursorX = max(0, pane.cursorX - stripCount)
 			case _:
 				matched = False
 		if matched:
@@ -398,6 +482,11 @@ def handle(editor, event):
 				else:
 					insertText(editor, " " * editor.settings.tabSize)
 		case "ENTER":
+			if pane.multiCursor.isMulti():
+				insertTextMultiCursor(editor, "\n")
+				editor.updateScroll()
+				editor.notifyChanged()
+				return
 			saveUndo(editor)
 			line = buffer.lines[pane.cursorY]
 			left = line[:pane.cursorX]
@@ -420,6 +509,9 @@ def handle(editor, event):
 			editor.updateScroll()
 			editor.notifyChanged()
 		case "BACKSPACE":
+			if pane.multiCursor.isMulti():
+				backspaceMultiCursor(editor)
+				return
 			saveUndo(editor)
 			editor.completionActive = False
 			editor.completions = []
@@ -483,19 +575,35 @@ def handle(editor, event):
 			editor.notifyChanged()
 		case "LEFT":
 			selection.clear()
-			moveLeft(buffer, pane)
+			if pane.multiCursor.isMulti():
+				from core.multiCursor import forEachCursor
+				forEachCursor(pane, moveLeft)
+			else:
+				moveLeft(buffer, pane)
 			editor.notifyChanged()
 		case "RIGHT":
 			selection.clear()
-			moveRight(buffer, pane)
+			if pane.multiCursor.isMulti():
+				from core.multiCursor import forEachCursor
+				forEachCursor(pane, moveRight)
+			else:
+				moveRight(buffer, pane)
 			editor.notifyChanged()
 		case "UP":
 			selection.clear()
-			moveUp(buffer, pane)
+			if pane.multiCursor.isMulti():
+				from core.multiCursor import forEachCursor
+				forEachCursor(pane, moveUp)
+			else:
+				moveUp(buffer, pane)
 			editor.notifyChanged()
 		case "DOWN":
 			selection.clear()
-			moveDown(buffer, pane)
+			if pane.multiCursor.isMulti():
+				from core.multiCursor import forEachCursor
+				forEachCursor(pane, moveDown)
+			else:
+				moveDown(buffer, pane)
 			editor.notifyChanged()
 		case "HOME":
 			line = buffer.lines[pane.cursorY]
@@ -513,6 +621,11 @@ def handle(editor, event):
 				saveUndo(editor)
 				line = buffer.lines[pane.cursorY]
 				closers = set(PAIRS.values())
+				if pane.multiCursor.isMulti():
+					insertTextMultiCursor(editor, key)
+					updateCompletions(editor)
+					editor.notifyChanged()
+					return
 				if key in closers and pane.cursorX < len(line) and line[pane.cursorX] == key:
 					if key not in ('"', "'") or not selection.active:
 						pane.cursorX += 1
@@ -554,6 +667,101 @@ def handle(editor, event):
 				return
 	editor.completionActive = False
 	editor.completions = []
+	editor.notifyChanged()
+
+def insertTextMultiCursor(editor, text):
+	pane = editor.pane
+	buffer = pane.buffer
+	cursors = pane.multiCursor.cursors
+
+	if len(cursors) == 1:
+		insertText(editor, text)
+		return
+	saveUndo(editor)
+	hasNewline = "\n" in text
+	parts = text.split("\n") if hasNewline else None
+	addedLinesPerInsert = (len(parts) - 1) if hasNewline else 0
+
+	snapshot = sorted(
+		[(c, c.y, c.x) for c in cursors],
+		key=lambda t: (t[1], t[2]),
+		reverse=True
+	)
+	for cursor, originY, originX in snapshot:
+		line = buffer.lines[originY]
+
+		if hasNewline:
+			left = line[:originX]
+			right = line[originX:]
+			buffer.lines[originY] = left + parts[0]
+			for i, part in enumerate(parts[1:-1], 1):
+				buffer.lines.insert(originY + i, part)
+			lastIndex = originY + len(parts) - 1
+			buffer.lines.insert(lastIndex, parts[-1] + right)
+
+			cursor.x = len(parts[-1])
+			cursor.y  = lastIndex
+
+			for other, otherOriginY, otherOriginX in snapshot:
+				if other is cursor:
+					continue
+				if otherOriginY > originY:
+					other.y += addedLinesPerInsert
+				elif otherOriginY == originY and otherOriginX >= originX:
+					other.y = lastIndex
+					other.x = otherOriginX - originX + len(parts[-1])
+		else:
+			buffer.lines[originY] = line[:originX] + text + line[originX:]
+			cursor.x = originX + len(text)
+			cursor.y = originY
+
+			for other, otherOriginY, otherOriginX in snapshot:
+				if other is cursor:
+					continue
+				if otherOriginY == originY and otherOriginX >= originX:
+					other.x += len(text)
+	pane.multiCursor.removeDuplicates()
+	editor.notifyChanged()
+
+def backspaceMultiCursor(editor):
+	pane = editor.pane
+	buffer = pane.buffer
+	cursors = pane.multiCursor.cursors
+
+	saveUndo(editor)
+	snapshot = sorted(
+		[(c, c.y, c.x) for c in cursors],
+		key=lambda t: (t[1], t[2]),
+		reverse=True
+	)
+
+	for cursor, originY, originX in snapshot:
+		if originX > 0:
+			line = buffer.lines[originY]
+			buffer.lines[originY] = line[:originX - 1] + line[originX:]
+			cursor.x = originX - 1
+			cursor.y = originY
+			for other, otherOriginY, otherOriginX in snapshot:
+				if other is cursor:
+					continue
+				if otherOriginY == originY and otherOriginX >= originX:
+					other.x -= 1
+		elif originY > 0:
+			prevLineLen = len(buffer.lines[originY - 1])
+			buffer.lines[originY - 1] += buffer.lines[originY]
+			del buffer.lines[originY]
+			cursor.x = prevLineLen
+			cursor.y = originY - 1
+
+			for other, otherOriginY, otherOriginX in snapshot:
+				if other is cursor:
+					continue
+				if otherOriginY > originY:
+					other.y -= 1
+				elif otherOriginY == originY:
+					other.y = originY - 1
+					other.x = prevLineLen + otherOriginX
+	pane.multiCursor.removeDuplicates()
 	editor.notifyChanged()
 
 def updateCompletions(editor):

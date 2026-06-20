@@ -1,5 +1,6 @@
 #app.py
 import sys
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -19,7 +20,10 @@ from frontend.qt.explorer import Explorer
 from frontend.qt.tabBar import TabBar
 
 def loadAppFont():
-	fontID = QFontDatabase.addApplicationFont("assets/fonts/Courier New.ttf")
+	fontPath = "assets/fonts/Courier New.ttf"
+	fontID = -1
+	if os.path.exists(fontPath):
+		fontID = QFontDatabase.addApplicationFont(fontPath)
 	if fontID != -1:
 		family = QFontDatabase.applicationFontFamilies(fontID)[0]
 	else:
@@ -535,6 +539,12 @@ class MainWindow(QMainWindow):
 		self.docsOverlay.raise_()
 		self.docsOverlay.show()
 
+	def loadAppIcon():
+		iconPath = "assets/icons/quiver.png"
+		if os.path.exists(iconPath):
+			return QIcon(iconPath)
+		return QIcon()
+
 	def focusExplorer(self):
 		self.editor.showExplorer = True
 		self.explorer.syncVisibility()
@@ -551,11 +561,17 @@ class MainWindow(QMainWindow):
 		self.titleBar.titleLabel.setText(f"QUIVER | {name}{modified}")
 
 if __name__ == "__main__":
+	def loadAppIcon():
+		iconPath = "assets/icons/quiver.png"
+		if os.path.exists(iconPath):
+			return QIcon(iconPath)
+		return QIcon()
+	
 	app = QApplication(sys.argv)
 	appFont = loadAppFont()
 	app.setFont(appFont)
 	app.setStyleSheet(loadQtTheme("quiver"))
-	icon = QIcon("assets/icons/quiver.png")
+	icon = loadAppIcon()
 	app.setWindowIcon(icon)
 	window = MainWindow(appFont)
 	savedTheme = window.editor.settings.get("theme", "quiver")
