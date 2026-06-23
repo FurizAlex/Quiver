@@ -16,6 +16,8 @@ palette = {
 	"SELECTION"				: "#FFFFFF",
 	"SELECTION_TEXT"		: "#0000AA",
 	"CURRENT_LINE"			: "#0000AA",
+	"LINE_NUMBER"			: "#AAAAAA",
+	"CURRENT_LINE_NUMBER"	: "#FFFFFF",
 	"STATUS_BG"				: "#0000AA",
 	"STATUS_FG"				: "#FFFFFF",
 	"PALETTE_BG"			: "#0000AA",
@@ -45,7 +47,8 @@ CURSES_TO_HEX = {
 	"dark green":	"#087000",
 	"yellow":		"#AAAA00",
 	"blue":			"#0000AA",
-	"aqua":			"#55FFFF",			
+	"aqua":			"#55FFFF",
+	"aero":			"#0689E4",	
 	"magenta":		"#AA00AA",
 	"cyan":			"#00AAAA",
 	"white":		"#FFFFFF",
@@ -187,6 +190,9 @@ def applyThemeToQt(themeDefinition: dict):
 	palette["GUTTER_SEP"]			= foreground("lineNumber", fg)
 
 	palette["CURRENT_LINE"]			= background("lineNumber", bg)
+
+	palette["LINE_NUMBER"]			= foreground("lineNumber", fg)
+	palette["CURRENT_LINE_NUMBER"]	= foreground("currentLineNumber", fg)
 
 	palette["SELECTION"]			= foreground("selection", fg)
 	palette["SELECTION_TEXT"]		= background("selection", bg)

@@ -61,7 +61,12 @@ class Editor:
 
 		self.theme = Theme()
 		self.currentTheme = self.settings.get("theme")
-		self.theme.load(self.currentTheme)
+		try:
+			self.theme.load(self.currentTheme)
+		except Exception:
+			self.currentTheme = "quiver"
+			self.theme.load(self.currentTheme)
+			self.settings.set("theme", "quiver")
 		if stdscr is not None:
 			self.theme.initialize()
 		self.plugins = PluginManager()
@@ -87,7 +92,11 @@ class Editor:
 
 		self.showExplorer = self.settings.get("show_explorer")
 		self.explorerWidth = 30
-		self.explorerPath = "."
+		savedPath = self.settings.get("explorer_path", None)
+		if savedPath and os.path.isdir(savedPath):
+			self.explorerPath = savedPath
+		else:
+			self.explorerPath = None
 		self.explorerFiles = []
 		self.selectedFileIndex = 0
 
@@ -102,6 +111,9 @@ class Editor:
 		self.running = True
 		self.filename = None
 		self.status = "WELCOME TO QUIVER"
+
+		self.searchMatches = []
+		self.searchMatchIndex = 0
 
 		self.gotoMode = False
 		self.gotoInput = ""
@@ -191,6 +203,11 @@ class Editor:
 			self.explorerFiles = sorted(os.listdir(self.explorerPath))
 		except:
 			self.explorerFiles = []
+
+	def setExplorerPath(self, path):
+		self.explorerPath = path
+		self.settings.set("explorer_path", path)
+		self.saveConfig()
 
 	def saveConfig(self):
 		self.config.set("settings", self.settings.export())

@@ -54,7 +54,7 @@ def openFolder(editor):
 			QFileDialog.Option.ShowDirsOnly
 		)
 		if folder:
-			editor.explorerPath = folder
+			editor.setExplorerPath(folder)
 			if hasattr(editor, "qtWindow"):
 				editor.qtWindow.explorer.rebuild()
 			editor.status = f"Folder: {folder}"

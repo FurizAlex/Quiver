@@ -276,7 +276,7 @@ class PaneView(QWidget):
 			if bufferY >= len(pane.buffer.lines):
 				break
 			isCurrent = (bufferY == pane.cursorY)
-			painter.setPen(QColor("#FFFFFF") if isCurrent else QColor(getColor("COMMENT")))
+			painter.setPen(QColor(getColor("CURRENT_LINE_NUMBER")) if isCurrent else QColor(getColor("LINE_NUMBER")))
 			text = str(bufferY + 1)
 			textWidth = metrics.horizontalAdvance(text)
 			x = self.gutterWidth - textWidth - 10
@@ -340,19 +340,26 @@ class PaneView(QWidget):
 			tokens = self.lexer.tokenize(line, pane.buffer.language)
 			x = self.textX
 			bufferX = 0
+			visualCol = 0
 			for tokenText, tokenType in tokens:
 				for ch in tokenText:
 					if bufferX < pane.scrollX:
 						bufferX += 1
+						if ch == "\t":
+							visualCol += self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
+						else:
+							visualCol += 1
 						continue
 					if ch == "\t":
-						spaces = self.editor.settings.tabSize - (bufferX % self.editor.settings.tabSize)
+						spaces = self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
 						x += charWidth * spaces
+						visualCol += spaces
 						bufferX += 1
 					else:
 						painter.setPen(self.tokenColor(tokenType))
 						painter.drawText(x, lineIndex * lineHeight + metrics.ascent(), ch)
 						x += charWidth
+						visualCol += 1
 						bufferX += 1
 
 	def drawLineNumber(self, painter, lineNumber, y):

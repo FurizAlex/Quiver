@@ -1,11 +1,34 @@
-# -*- mode: python ; coding: utf-8 -*-
+import os
+import glob
+
+themeModules = [
+    f"themes.{os.path.splitext(os.path.basename(f))[0]}"
+    for f in glob.glob("themes/*.py")
+    if not os.path.basename(f).startswith("__")
+]
+
 
 a = Analysis(
     ['frontend/qt/app.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
-    datas=[],
-    hiddenimports=[],
+    datas=[
+		('assets', 'assets'),
+		('themes', 'themes'),
+		('docs', 'docs'),
+		('config', 'config'),
+	],
+    hiddenimports=[
+		'frontend',
+		'frontend.qt',
+		'core',
+		'commands',
+		'input',
+		'ui',
+		'syntax',
+		'util',
+		'config',
+	] + themeModules,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -25,7 +48,8 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
+	icon='assets/icons/quiver.png',
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

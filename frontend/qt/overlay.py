@@ -75,10 +75,16 @@ class OverlayWidget(QWidget):
 		rowHeight = metrics.height() + 8
 		y = self.height() - rowHeight
 		painter.fillRect(0, y, self.width(), rowHeight, QColor(getColor("PALETTE_BG")))
-
 		painter.setPen(QColor(getColor("PALETTE_FG")))
 		painter.drawLine(0, y, self.width(), y)
-		painter.drawText(8, y + metrics.ascent() + 4, f"SEARCH: {self.editor.searchInput}_")
+
+		matches = getattr(self.editor, "searchMatches", [])
+		if matches:
+			index = getattr(self.editor, "searchMatchIndex", 0)
+			countText = f"	[{index + 1}/{len(matches)}]"
+		else:
+			countText = ""
+		painter.drawText(8, y + metrics.ascent() + 4, f"SEARCH: {self.editor.searchInput}_{countText}")
 	
 	def drawPalette(self, painter, metrics):
 		items = self.filtered()

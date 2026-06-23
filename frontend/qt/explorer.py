@@ -140,7 +140,7 @@ class Explorer(QWidget):
 	def goBack(self):
 		parent = os.path.dirname(os.path.abspath(self.editor.explorerPath))
 		if parent != os.path.abspath(self.editor.explorerPath):
-			self.editor.explorerPath = parent
+			self.editor.setExplorerPath(parent)
 			self.rebuild()
 			self.editor.notifyChanged()
 
@@ -177,7 +177,7 @@ class Explorer(QWidget):
 		name = item.data(Qt.ItemDataRole.UserRole)
 		filepath = os.path.join(self.editor.explorerPath, name)
 		if os.path.isdir(filepath):
-			self.editor.explorerPath = filepath
+			self.editor.setExplorerPath(filepath)
 			self.rebuild()
 		else:
 			openFileBuffer(self.editor, filepath)

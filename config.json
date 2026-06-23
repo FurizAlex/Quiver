@@ -18,12 +18,14 @@
         "session_restore_enabled": true,
         "cursor_trail_enabled": true,
         "recentFiles": [
-            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/config.json",
-            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/README.md"
+            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/frontend/qt/editorView.py"
         ],
         "session": {
-            "buffers": [],
-            "activeIndex": 0
-        }
+            "buffers": [
+                "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/frontend/qt/editorView.py"
+            ],
+            "activeIndex": 1
+        },
+        "explorer_path": "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver"
     }
 }

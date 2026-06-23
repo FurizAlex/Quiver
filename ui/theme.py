@@ -2,6 +2,16 @@ import os
 import curses
 import importlib
 
+THEME_ORDER = [
+	"quiver",
+	"greencrt",
+	"nifilheim",
+	"iridescent",
+	"frutiger aero",
+	"globe",
+	"amiga",
+]
+
 COLOR_MAP = {
 	"black": curses.COLOR_BLACK,
 	"red": curses.COLOR_RED,
@@ -27,8 +37,19 @@ class Theme:
 		return COLOR_MAP.get(name, -1)
 	
 	def load(self, name):
-		module = importlib.import_module(f"themes.{name}")
-		self.definition = module.THEME
+		try:
+			module = importlib.import_module(f"themes.{name}")
+			self.definition = module.THEME
+		except ModuleNotFoundError:
+			fallbackName = "quiver"
+			if name != fallbackName:
+				module = importlib.import_module(f"themes.{fallbackName}")
+				self.definition = module.THEME
+			else:
+				self.definition = {
+					"meta": {"name": "Fallback"},
+					"defaults": {"fg": "white", "bg": "black"}
+				}
 	
 	def getPair(self, fg, bg):
 		key = (fg, bg)
@@ -58,6 +79,14 @@ class Theme:
 					})
 				except Exception:
 					pass
+
+		def sortKey(theme):
+			try:
+				return THEME_ORDER.index(theme["id"])
+			except ValueError:
+				return len(THEME_ORDER)
+
+		themes.sort(key=sortKey)
 		return themes
 
 	def initialize(self):

@@ -1,0 +1,65 @@
+QMainWindow, QWidget {
+    background: black;
+    color: white;
+    font-weight: bold;
+}
+
+/* Explorer panel and all its children default to blue */
+QWidget#explorerPanel {
+    background: #0000AA;
+}
+
+QLabel#explorerFilename,
+QLabel#explorerFiles {
+    background: #0000AA;
+    color: white;
+    padding-left: 6px;
+}
+
+QListWidget#explorer {
+    background: #0000AA;
+    color: white;
+    border: none;
+    outline: none;
+}
+
+QListWidget#explorer::item {
+    padding: 1px 4px;
+    background: #0000AA;
+    color: white;
+}
+
+QListWidget#explorer::item:selected {
+    background: white;
+    color: #0000AA;
+}
+
+QListWidget#explorer::item:hover:!selected {
+    background: #0000CC;
+    color: white;
+}
+
+QSplitter::handle {
+    background: transparent;
+    width: 0px;
+    height: 0px;
+}
+
+/* Status bar — must use background not inherited from QWidget black */
+QWidget#statusBar {
+    background: #0000AA !important;
+    color: white;
+    border-top: 1px solid white;
+}
+
+QWidget#statusBar QLabel {
+    background: transparent;
+    color: white;
+    padding: 0 4px;
+}
+
+QScrollBar:vertical, QScrollBar:horizontal {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+}

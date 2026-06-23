@@ -20,7 +20,7 @@ from frontend.qt.explorer import Explorer
 from frontend.qt.tabBar import TabBar
 
 def loadAppFont():
-	fontPath = "assets/fonts/Courier New.ttf"
+	fontPath = "assets/fonts/DepartureMono.otf"
 	fontID = -1
 	if os.path.exists(fontPath):
 		fontID = QFontDatabase.addApplicationFont(fontPath)
@@ -611,6 +611,15 @@ if __name__ == "__main__":
 	icon = loadAppIcon()
 	app.setWindowIcon(icon)
 	window = MainWindow(appFont)
+	if window.editor.explorerPath is None:
+		from PyQt6.QtWidgets import QFileDialog
+		folder = QFileDialog.getExistingDirectory(window, "Choose a folder to open in Quiver", os.path.expanduser("~"), QFileDialog.Option.ShowDirsOnly)
+		if folder:
+			window.editor.setExplorerPath(folder)
+		else:
+			window.editor.setExplorerPath(os.path.expanduser("~"))
+		window.explorer.rebuild()
+
 	savedTheme = window.editor.settings.get("theme", "quiver")
 	try:
 		import importlib
