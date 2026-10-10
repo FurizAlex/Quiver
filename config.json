@@ -18,14 +18,22 @@
         "session_restore_enabled": true,
         "cursor_trail_enabled": true,
         "recentFiles": [
-            "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/frontend/qt/editorView.py"
+            "/home/furizalex/Desktop/Transopoly/web/app/controllers/gameSessionsController.rb",
+            "/home/furizalex/Desktop/Transopoly/web/app/controllers/applicationController.rb",
+            "/home/furizalex/Desktop/Quiver/frontend/qt/app.py",
+            "/home/furizalex/Desktop/Quiver/syntax/language.py",
+            "/home/furizalex/Desktop/Quiver/syntax/lexer.py",
+            "/home/furizalex/Desktop/Quiver/syntax/providers.py"
         ],
         "session": {
             "buffers": [
-                "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver/frontend/qt/editorView.py"
+                "/home/furizalex/Desktop/Quiver/syntax/lexer.py",
+                "/home/furizalex/Desktop/Transopoly/web/app/controllers/applicationController.rb",
+                "/home/furizalex/Desktop/Transopoly/web/app/controllers/gameSessionsController.rb"
             ],
-            "activeIndex": 1
+            "activeIndex": 2,
+            "activePath": "/home/furizalex/Desktop/Transopoly/web/app/controllers/gameSessionsController.rb"
         },
-        "explorer_path": "/mnt/c/Users/ASUS/OneDrive/Desktop/Personal/Quiver"
+        "explorer_path": "/home/furizalex/Desktop/Transopoly/web/app/controllers"
     }
 }

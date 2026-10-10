@@ -19,7 +19,8 @@ class OverlayWidget(QWidget):
 		editor.signals.changed.connect(self.update)
 
 	def paintEvent(self, event):
-		if not self.editor.paletteOpen and not self.editor.searchMode and not self.editor.completionActive:
+		gotoMode = getattr(self.editor, "gotoMode", False)
+		if not self.editor.paletteOpen and not self.editor.searchMode and not self.editor.completionActive and not gotoMode:
 			return
 		painter = QPainter(self)
 		painter.setFont(self.font)
@@ -27,6 +28,8 @@ class OverlayWidget(QWidget):
 
 		if self.editor.searchMode:
 			self.drawSearch(painter, metrics)
+		elif gotoMode:
+			self.drawGoto(painter, metrics)
 		if self.editor.paletteOpen:
 			self.drawPalette(painter, metrics)
 		if self.editor.completionActive:
@@ -81,7 +84,9 @@ class OverlayWidget(QWidget):
 		matches = getattr(self.editor, "searchMatches", [])
 		if matches:
 			index = getattr(self.editor, "searchMatchIndex", 0)
-			countText = f"	[{index + 1}/{len(matches)}]"
+			countText = f"  [{index + 1}/{len(matches)}]"
+		elif getattr(self.editor, "searchInput", ""):
+			countText = "  [NO MATCH]"
 		else:
 			countText = ""
 		painter.drawText(8, y + metrics.ascent() + 4, f"SEARCH: {self.editor.searchInput}_{countText}")
@@ -92,7 +97,8 @@ class OverlayWidget(QWidget):
 		maxVisible = 12
 		totalItems = len(items)
 
-		select = self.editor.paletteSelection
+		select = max(0, min(self.editor.paletteSelection, max(0, totalItems - 1)))
+		self.editor.paletteSelection = select
 		offset = getattr(self.editor, "paletteScrollOffset", 0)
 		if select < offset:
 			offset = select
@@ -104,7 +110,7 @@ class OverlayWidget(QWidget):
 
 		inputWidth = metrics.horizontalAdvance("> " + self.editor.paletteInput + "_") + 20
 		boxWidth = min(self.width() - 60, max(680, inputWidth + 40))
-		boxHeight = rowHeight + 6 + rowHeight + 8 + len(visibleSlice) * rowHeight + rowHeight + 16
+		boxHeight = rowHeight + 6 + rowHeight + 8 + max(1, len(visibleSlice)) * rowHeight + rowHeight + 16
 		boxX = (self.width() - boxWidth) // 2
 		boxY = max(10, (self.height() - boxHeight) // 3)
 		if boxY + boxHeight > self.height() - 10:
@@ -172,6 +178,10 @@ class OverlayWidget(QWidget):
 				name = name[:-4] + "..."
 			painter.drawText(boxX + 10, cy + metrics.ascent(), name)
 			cy += rowHeight
+		if not items:
+			painter.setPen(QColor(hintFg))
+			painter.drawText(boxX + 10, cy + metrics.ascent(), "NO MATCHES")
+			cy += rowHeight
 		if totalItems > maxVisible:
 			painter.setPen(QColor(hintFg))
 			scrollText = f"{select + 1}/{totalItems}"
@@ -179,8 +189,20 @@ class OverlayWidget(QWidget):
 			painter.drawText(boxX + boxWidth - scrollWidth - 8, titleRowY, scrollText)
 		cy += 4
 		painter.setPen(QColor(hintFg))
-		hint = "ENTER select  ESC close      ↑↓ BKSP Go Up (FILES)"
+		hint = "↑↓ move  ENTER select  ESC close"
+		if self.editor.paletteMode == "files":
+			hint += "  BKSP up folder"
 		painter.drawText(boxX + 8, cy + metrics.ascent(), hint)
+
+	def drawGoto(self, painter, metrics):
+		rowHeight = metrics.height() + 8
+		y = self.height() - rowHeight
+		painter.fillRect(0, y, self.width(), rowHeight, QColor(getColor("PALETTE_BG")))
+		painter.setPen(QColor(getColor("PALETTE_FG")))
+		painter.drawLine(0, y, self.width(), y)
+		total = len(self.editor.pane.buffer.lines)
+		text = f"GO TO LINE (1-{total}): {getattr(self.editor, 'gotoInput', '')}_"
+		painter.drawText(8, y + metrics.ascent() + 4, text)
 
 	def filtered(self):
 		query = self.editor.paletteInput.strip().lower()

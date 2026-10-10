@@ -37,6 +37,8 @@ class PaneContainer(QWidget):
 			self.splitter.addWidget(view)
 			self.paneViews.append(view)
 
+		if self.paneViews:
+			self.splitter.setSizes([1000] * len(self.paneViews))
 		index = self.editor.activePane
 		if 0 <= index < len(self.paneViews):
 			self.paneViews[index].setFocus()

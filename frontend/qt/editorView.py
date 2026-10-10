@@ -10,6 +10,7 @@ from frontend.qt.overlay import OverlayWidget
 from frontend.qt.amigaPalette import getColor, buildDitherImage, loadBackgroundImage
 from frontend.qt.qtTranslator import translateKey
 from syntax.lexer import Lexer
+from commands.tabCommands import rememberView, restoreView
 
 import math
 
@@ -45,11 +46,19 @@ class EditorView(QWidget):
 
 class PaneView(QWidget):
 	TEXT_PADDING = 8
+	SHOW_INDENT_GUIDES = True
 	cursorChanged = pyqtSignal(int, int)
 	def __init__(self, editor, pane, font: QFont, paneIndex=0):
 		super().__init__()
 		self.cursorTrail = []
 		self.TRAIL_LENGTH = 4
+		self.mouseSelecting = False
+		self._viewBuffer = None
+		self._lastView = None
+		self._lastCursor = None
+		self._lastScroll = None
+		self._wheelX = 0
+		self._wheelY = 0
 
 		self.editor = editor
 		self.pane = pane
@@ -65,7 +74,7 @@ class PaneView(QWidget):
 		self.gutterImage = None
 		self.gutterImageSize = None
 
-		self.transitionTimer = QTimer()
+		self.transitionTimer = QTimer(self)
 		self.transitionTimer.setInterval(16)
 		self.transitionTimer.timeout.connect(self.tickTransition)
 		self.transitionProgress = 1.0
@@ -73,7 +82,7 @@ class PaneView(QWidget):
 		self.transitionElapsed = 0
 		self.previousBackgroundImage = None
 
-		self.resizeDebounce = QTimer()
+		self.resizeDebounce = QTimer(self)
 		self.resizeDebounce.setSingleShot(True)
 		self.resizeDebounce.setInterval(120)
 		self.resizeDebounce.timeout.connect(self.rebuildBackgroundImage)
@@ -85,7 +94,7 @@ class PaneView(QWidget):
 		self.cursorAnimY = None
 		self.cursorTargetX = 0
 		self.cursorTargetY = 0
-		self.animTimer = QTimer()
+		self.animTimer = QTimer(self)
 		self.animTimer.setInterval(16)
 		self.animTimer.timeout.connect(self.tickCursorAnim)
 		self.animTimer.start()
@@ -107,20 +116,108 @@ class PaneView(QWidget):
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
+		digits = max(4, len(str(len(self.pane.buffer.lines))))
+		gutterWidth = metrics.horizontalAdvance("0" * digits) + 40
+		if gutterWidth != self.gutterWidth:
+			self.gutterWidth = gutterWidth
+			self.textX = gutterWidth + self.TEXT_PADDING
 		textAreaW = self.width() - self.textX
 		self.pane.lineHeight = lineHeight
 		self.pane.charWidth = charWidth
 		self.pane.visibleLines = max(1, self.height() // lineHeight)
 		self.pane.visibleCols = max(1, textAreaW // charWidth)
 
+	def visualColumnOf(self, line, x):
+		tabSize = max(1, self.editor.settings.tabSize)
+		col = 0
+		for ch in line[:x]:
+			if ch == "\t":
+				col += tabSize - (col % tabSize)
+			else:
+				col += 1
+		return col
+
+	def ensureCursorVisibleX(self):
+		pane = self.pane
+		try:
+			line = pane.buffer.lines[pane.cursorY]
+		except IndexError:
+			return
+		column = self.visualColumnOf(line, pane.cursorX)
+		cols = max(1, pane.visibleCols)
+		margin = min(4, cols // 4)
+		if column < pane.scrollX + margin:
+			pane.scrollX = max(0, column - margin)
+		elif column >= pane.scrollX + cols - margin:
+			pane.scrollX = column - cols + margin + 1
+
+	def followCursor(self):
+		"""Scroll horizontally only when the cursor actually moved (so shift+wheel scrolling sticks)."""
+		pane = self.pane
+		here = (id(pane.buffer), pane.cursorX, pane.cursorY)
+		if here != self._lastCursor:
+			self._lastCursor = here
+			self.ensureCursorVisibleX()
+
+	def maxScrollX(self):
+		pane = self.pane
+		tabSize = max(1, self.editor.settings.tabSize)
+		first = pane.scrollY
+		widest = 0
+		for line in pane.buffer.lines[first: first + pane.visibleLines + 1]:
+			widest = max(widest, len(line.expandtabs(tabSize)))
+		return max(0, widest - 1)
+
+	def carryCursorWithScroll(self):
+		"""Scrolling moves the text, so move the animated cursor by the same amount.
+		Must run at paint time too: the repaint caused by a scroll happens before the animation timer."""
+		scroll = (self.pane.scrollX, self.pane.scrollY)
+		last = self._lastScroll
+		self._lastScroll = scroll
+		if last is None or scroll == last or self.cursorAnimX is None:
+			return False
+		metrics = QFontMetrics(self.font)
+		self.cursorAnimX -= (scroll[0] - last[0]) * metrics.horizontalAdvance("M")
+		self.cursorAnimY -= (scroll[1] - last[1]) * metrics.height()
+		self.cursorTrail.clear()
+		return True
+
+	def snapCursor(self):
+		self.cursorAnimX = None
+		self.cursorAnimY = None
+		self.cursorTrail.clear()
+
+	def syncBufferView(self):
+		"""When the buffer shown by this pane changes (tab click, explorer, ctrl+tab...)
+		restore that buffer's own cursor/scroll instead of reusing the previous file's."""
+		pane = self.pane
+		buffer = pane.buffer
+		current = (pane.cursorX, pane.cursorY, getattr(pane, "scrollX", 0), getattr(pane, "scrollY", 0))
+		if self._viewBuffer is not buffer:
+			if self._viewBuffer is not None:
+				if current == self._lastView:
+					restoreView(self.editor, pane, buffer)
+				else:
+					lastLine = max(0, len(buffer.lines) - 1)
+					pane.cursorY = max(0, min(pane.cursorY, lastLine))
+					pane.cursorX = max(0, min(pane.cursorX, len(buffer.lines[pane.cursorY])))
+				self.snapCursor()
+			self._viewBuffer = buffer
+		rememberView(self.editor, pane, buffer)
+		self._lastView = (pane.cursorX, pane.cursorY, getattr(pane, "scrollX", 0), getattr(pane, "scrollY", 0))
+
 	def paintEvent(self, event):
 		try:
 			self.updateVisibleDimensions()
+			self.syncBufferView()
+			self.followCursor()
+			self.carryCursorWithScroll()
 			painter = QPainter(self)
 			painter.setFont(self.font)
 			self.drawBackground(painter)
 			self.drawCurrentLine(painter)
 			self.drawSelection(painter)
+			self.drawIndentGuides(painter)
 			self.drawText(painter)
 			self.drawGutter(painter)
 			self.drawCursor(painter)
@@ -143,20 +240,26 @@ class PaneView(QWidget):
 		return x, y
 	
 	def tickCursorAnim(self):
+		if not self.isVisible():
+			return
+		scrolled = self.carryCursorWithScroll()
 		tx, ty = self.cursorPixelPos()
 		if self.cursorAnimX is None:
 			self.cursorAnimX = float(tx)
 			self.cursorAnimY = float(ty)
 			self.lastCursorRow = self.pane.cursorY
 			self.cursorScaleY = 1.0
+			self.update()
 			return
 
 		if self.pane.cursorY != self.lastCursorRow:
 			self.cursorScaleY = 0.08
 			self.lastCursorRow = self.pane.cursorY
 			self.cursorTrail.clear()
-		
+
 		self.cursorScaleY += (1.0 - self.cursorScaleY) * 0.12
+		if abs(1.0 - self.cursorScaleY) < 0.01:
+			self.cursorScaleY = 1.0
 		speed = 0.3
 		dx = tx - self.cursorAnimX
 		dy = ty - self.cursorAnimY
@@ -165,12 +268,19 @@ class PaneView(QWidget):
 			self.cursorTrail.append((self.cursorAnimX, self.cursorAnimY))
 			if len(self.cursorTrail) > self.TRAIL_LENGTH:
 				self.cursorTrail.pop(0)
-		else:
-			if self.cursorTrail:
-				self.cursorTrail.pop(0)
-		self.cursorAnimX += dx * speed
-		self.cursorAnimY += dy * speed
-		self.update()
+		elif self.cursorTrail:
+			self.cursorTrail.pop(0)
+
+		needsPaint = scrolled or moved or self.cursorScaleY != 1.0 or bool(self.cursorTrail)
+		if moved:
+			self.cursorAnimX += dx * speed
+			self.cursorAnimY += dy * speed
+		elif dx != 0 or dy != 0:
+			self.cursorAnimX = float(tx)
+			self.cursorAnimY = float(ty)
+			needsPaint = True
+		if needsPaint:
+			self.update()
 
 	def startThemeTransition(self):
 		if self.backgroundImage is not None:
@@ -332,35 +442,65 @@ class PaneView(QWidget):
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
+		tabSize = max(1, self.editor.settings.tabSize)
 		pane = self.pane
+		scrollX = pane.scrollX
 		visibleCount = self.height() // lineHeight + 1
 		lines = pane.buffer.lines[pane.scrollY: pane.scrollY + visibleCount]
+		rightEdge = self.width()
 
 		for lineIndex, line in enumerate(lines):
 			tokens = self.lexer.tokenize(line, pane.buffer.language)
-			x = self.textX
-			bufferX = 0
+			baseline = lineIndex * lineHeight + metrics.ascent()
 			visualCol = 0
+			done = False
 			for tokenText, tokenType in tokens:
+				painter.setPen(self.tokenColor(tokenType))
 				for ch in tokenText:
-					if bufferX < pane.scrollX:
-						bufferX += 1
-						if ch == "\t":
-							visualCol += self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
-						else:
-							visualCol += 1
-						continue
-					if ch == "\t":
-						spaces = self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
-						x += charWidth * spaces
-						visualCol += spaces
-						bufferX += 1
-					else:
-						painter.setPen(self.tokenColor(tokenType))
-						painter.drawText(x, lineIndex * lineHeight + metrics.ascent(), ch)
-						x += charWidth
-						visualCol += 1
-						bufferX += 1
+					width = (tabSize - (visualCol % tabSize)) if ch == "\t" else 1
+					if visualCol + width > scrollX and ch != "\t":
+						x = self.textX + (visualCol - scrollX) * charWidth
+						if x >= rightEdge:
+							done = True
+							break
+						painter.drawText(x, baseline, ch)
+					visualCol += width
+				if done:
+					break
+
+	def drawIndentGuides(self, painter):
+		if not self.SHOW_INDENT_GUIDES:
+			return
+		tabSize = max(1, self.editor.settings.tabSize)
+		metrics = QFontMetrics(self.font)
+		lineHeight = metrics.height()
+		charWidth = metrics.horizontalAdvance("M")
+		pane = self.pane
+		lines = pane.buffer.lines
+		color = QColor(getColor("COMMENT"))
+		color.setAlpha(60)
+		visibleCount = self.height() // lineHeight + 1
+		for i in range(visibleCount):
+			y = pane.scrollY + i
+			if y >= len(lines):
+				break
+			line = lines[y]
+			if not line.strip():
+				continue
+			visual = 0
+			for ch in line:
+				if ch == " ":
+					visual += 1
+				elif ch == "\t":
+					visual += tabSize - (visual % tabSize)
+				else:
+					break
+			col = 0
+			while col < visual:
+				x = self.textX + (col - pane.scrollX) * charWidth
+				if x >= self.textX:
+					painter.fillRect(x, i * lineHeight, 1, lineHeight, color)
+				col += tabSize
 
 	def drawLineNumber(self, painter, lineNumber, y):
 		painter.setFont(self.font)
@@ -482,9 +622,10 @@ class PaneView(QWidget):
 					scVisual = bufferColToVisualCol(line, sc)
 					ecVisual = bufferColToVisualCol(line, ec)
 
-					x = self.textX + (scVisual - pane.scrollX) * charWidth
-					w = (ecVisual - scVisual) * charWidth
-					painter.fillRect(x, visibleLine * lineHeight, w, lineHeight, selectionColor)
+					x0 = max(self.textX, self.textX + (scVisual - pane.scrollX) * charWidth)
+					x1 = self.textX + (ecVisual - pane.scrollX) * charWidth
+					if x1 > x0:
+						painter.fillRect(x0, visibleLine * lineHeight, x1 - x0, lineHeight, selectionColor)
 					painter.setPen(QColor(getColor("SELECTION_TEXT")))
 					visualCol = scVisual
 					for col in range(sc, min(ec, len(line))):
@@ -514,30 +655,93 @@ class PaneView(QWidget):
 		}
 		return QColor(getColor(mapping.get(tokenType, "TEXT")))
 
-	def keyPressEvent(self, event):
-		if event.key() == Qt.Key.Key_Tab:
+	def focusInEvent(self, event):
+		super().focusInEvent(event)
+		if self.editor.activePane != self.paneIndex:
 			self.editor.activePane = self.paneIndex
-			inputEvent = translateKey(event)
-			self.editor.handleInput(inputEvent)
+			self.editor.notifyChanged()
+
+	def modalInputActive(self):
+		ed = self.editor
+		return bool(
+			getattr(ed, "searchMode", False) or getattr(ed, "paletteOpen", False)
+			or getattr(ed, "saving", False) or getattr(ed, "gotoMode", False)
+			or getattr(ed, "folderInputMode", False)
+		)
+
+	def pasteIntoModalInput(self):
+		"""Ctrl+V in the search bar / palette / goto / save-as: feed the clipboard in as typed keys."""
+		from PyQt6.QtWidgets import QApplication
+		from input.event import InputEvent
+		lines = QApplication.clipboard().text().splitlines()
+		for ch in (lines[0] if lines else ""):
+			if ch.isprintable():
+				self.editor.handleInput(InputEvent(key=ch, ctrl=False, shift=False, alt=False))
+		self.editor.notifyChanged()
+
+	def contextMenuEvent(self, event):
+		from PyQt6.QtWidgets import QMenu, QApplication
+		from input.event import InputEvent
+		self.editor.activePane = self.paneIndex
+		menu = QMenu(self)
+		cutAction = menu.addAction("Cut")
+		copyAction = menu.addAction("Copy")
+		pasteAction = menu.addAction("Paste")
+		menu.addSeparator()
+		selectAllAction = menu.addAction("Select All")
+		pasteAction.setEnabled(bool(QApplication.clipboard().text()))
+		keys = {cutAction: "X", copyAction: "C", pasteAction: "V", selectAllAction: "A"}
+		key = keys.get(menu.exec(event.globalPos()))
+		self.setFocus()
+		if key:
+			self.editor.handleInput(InputEvent(key=key, ctrl=True, shift=False, alt=False))
 			self.editor.updateScroll()
 			self.editor.notifyChanged()
+
+	def keyPressEvent(self, event):
+		self.editor.activePane = self.paneIndex
+		mods = event.modifiers()
+		ctrl = bool(mods & Qt.KeyboardModifier.ControlModifier)
+		shift = bool(mods & Qt.KeyboardModifier.ShiftModifier)
+		isPaste = (event.key() == Qt.Key.Key_V and ctrl and not (mods & Qt.KeyboardModifier.AltModifier)) \
+			or (event.key() == Qt.Key.Key_Insert and shift and not ctrl)
+		if isPaste and self.modalInputActive():
+			self.pasteIntoModalInput()
 			event.accept()
 			return
-		self.editor.activePane = self.paneIndex
 		inputEvent = translateKey(event)
+		bufferBefore = self.pane.buffer
+		scrollXBefore = self.pane.scrollX
 		self.editor.handleInput(inputEvent)
 		self.editor.updateScroll()
+		if self.pane.buffer is bufferBefore:
+			self.pane.scrollX = scrollXBefore
 		self.editor.notifyChanged()
 		self.cursorChanged.emit(self.pane.cursorY + 1, self.pane.cursorX + 1)
+		event.accept()
 
 	def mousePressEvent(self, event):
 		self.setFocus()
 		self.editor.activePane = self.paneIndex
+		self.editor.completionActive = False
+		self.editor.completions = []
+		self.editor._undoGroup = None
 		if event.button() == Qt.MouseButton.LeftButton:
 			row, col = self.pixelToRowCol(event.position().x(), event.position().y())
-			altHeld = event.modifiers() & Qt.KeyboardModifier.AltModifier
-			if altHeld:
+			modifiers = event.modifiers()
+			if modifiers & Qt.KeyboardModifier.AltModifier:
 				self.pane.multiCursor.addCursor(col, row)
+				self.editor.notifyChanged()
+				event.accept()
+				return
+			if modifiers & Qt.KeyboardModifier.ShiftModifier:
+				selection = self.editor.selection
+				if not selection.active:
+					selection.begin(self.pane.cursorX, self.pane.cursorY)
+				selection.update(col, row)
+				self.pane.cursorX = col
+				self.pane.cursorY = row
+				self.mouseSelecting = True
 				self.editor.notifyChanged()
 				event.accept()
 				return
@@ -547,9 +751,45 @@ class PaneView(QWidget):
 			self.editor.notifyChanged()
 		event.accept()
 
+	def mouseDoubleClickEvent(self, event):
+		if event.button() != Qt.MouseButton.LeftButton:
+			return
+		row, col = self.pixelToRowCol(event.position().x(), event.position().y())
+		line = self.pane.buffer.lines[row]
+		self.mouseSelecting = False
+		if not line:
+			return
+		col = min(col, len(line) - 1)
+		isWord = lambda c: c.isalnum() or c == "_"
+		if isWord(line[col]):
+			same = isWord
+		elif line[col].isspace():
+			same = lambda c: c.isspace()
+		else:
+			same = lambda c: False
+		start = col
+		while start > 0 and same(line[start - 1]):
+			start -= 1
+		end = col + 1
+		while end < len(line) and same(line[end]):
+			end += 1
+		selection = self.editor.selection
+		selection.clear()
+		selection.begin(start, row)
+		selection.update(end, row)
+		self.pane.cursorX = end
+		self.pane.cursorY = row
+		self.editor.notifyChanged()
+		event.accept()
+
 	def mouseMoveEvent(self, event):
-		if getattr(self, 'mouseSelecting', False) and event.buttons() & Qt.MouseButton.LeftButton:
-			row, col = self.pixelToRowCol(event.position().x(), event.position().y())
+		if self.mouseSelecting and event.buttons() & Qt.MouseButton.LeftButton:
+			py = event.position().y()
+			if py < 0:
+				self.pane.scrollY = max(0, self.pane.scrollY - 1)
+			elif py > self.height():
+				self.pane.scrollY = min(max(0, len(self.pane.buffer.lines) - 1), self.pane.scrollY + 1)
+			row, col = self.pixelToRowCol(event.position().x(), py)
 			if not self.editor.selection.active:
 				self.editor.selection.begin(self.pane.cursorX, self.pane.cursorY)
 			self.editor.selection.update(col, row)
@@ -567,29 +807,23 @@ class PaneView(QWidget):
 
 	def wheelEvent(self, event):
 		delta = event.angleDelta()
-		shift = event.modifiers() & Qt.KeyboardModifier.ShiftModifier
-		if shift:
-			amount = delta.y()
-			cols = max(1, abs(amount) // 40)
-			if amount > 0:
-				self.pane.scrollX = max(0, self.pane.scrollX - cols)
-			else:
-				self.pane.scrollX = max(0, self.pane.scrollX + cols)
-		else:
-			if delta.y() != 0:
-				lines = max(1, abs(delta.y()) // 40)
-				if delta.y() > 0:
-					self.pane.scrollY = max(0, self.pane.scrollY - lines)
-				else:
-					maxScroll = (max(0, len(self.pane.buffer.lines) - 1))
-					self.pane.scrollY = min(maxScroll, self.pane.scrollY + lines)
-				if delta.x() != 0:
-					cols = max(1, abs(delta.x()) // 40)
-					if delta.x() > 0:
-						self.pane.scrollX = max(0, self.pane.scrollX - cols)
-					else:
-						self.pane.scrollX = self.pane.scrollX + cols
-		self.editor.notifyChanged()
+		dx, dy = delta.x(), delta.y()
+		if event.modifiers() & Qt.KeyboardModifier.ShiftModifier and dx == 0:
+			dx, dy = dy, 0
+		self._wheelX += dx
+		self._wheelY += dy
+		lines = int(self._wheelY / 40)
+		cols = int(self._wheelX / 40)
+		if lines:
+			self._wheelY -= lines * 40
+			maxScroll = max(0, len(self.pane.buffer.lines) - 1)
+			self.pane.scrollY = max(0, min(maxScroll, self.pane.scrollY - lines))
+		if cols:
+			self._wheelX -= cols * 40
+			self.pane.scrollX = max(0, min(self.pane.scrollX - cols, self.maxScrollX()))
+		if lines or cols:
+			self.editor.notifyChanged()
+		event.accept()
 
 	def storeCursorScreenPos(self):
 		pane = self.pane
@@ -630,18 +864,16 @@ class PaneView(QWidget):
 		metrics = QFontMetrics(self.font)
 		lineHeight = metrics.height()
 		charWidth = metrics.horizontalAdvance("M")
-		row = int(py / lineHeight) + self.pane.scrollY
+		row = int(py // lineHeight) + self.pane.scrollY
 		row = max(0, min(row, len(self.pane.buffer.lines) - 1))
 
 		line = self.pane.buffer.lines[row]
+		tabSize = self.editor.settings.tabSize
 		visualCol = 0
 		for i, ch in enumerate(line):
-			pixelX = self.textX + (visualCol - self.pane.scrollX) * charWidth
-			if pixelX >= px:
+			width = (tabSize - (visualCol % tabSize)) if ch == "\t" else 1
+			left = self.textX + (visualCol - self.pane.scrollX) * charWidth
+			if px < left + width * charWidth:
 				return row, i
-			if ch == "\t":
-				spaces = self.editor.settings.tabSize - (visualCol % self.editor.settings.tabSize)
-				visualCol += spaces
-			else:
-				visualCol += 1
+			visualCol += width
 		return row, len(line)

@@ -3,7 +3,14 @@ import sys
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+def projectRoot():
+	# Packaged with PyInstaller, bundled data lives in sys._MEIPASS and this script's
+	# __file__ is no longer inside frontend/qt, so parents[2] would point at the wrong folder.
+	if getattr(sys, "frozen", False):
+		return Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+	return Path(__file__).resolve().parents[2]
+
+ROOT = projectRoot()
 sys.path.insert(0, str(ROOT))
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -20,10 +27,13 @@ from frontend.qt.explorer import Explorer
 from frontend.qt.tabBar import TabBar
 
 def loadAppFont():
-	fontPath = "assets/fonts/DepartureMono.otf"
+	# resolve from the project root, not the current working directory
+	fontPath = str(ROOT / "assets" / "fonts" / "DepartureMono.otf")
 	fontID = -1
 	if os.path.exists(fontPath):
 		fontID = QFontDatabase.addApplicationFont(fontPath)
+	if fontID == -1:
+		print(f"[quiver] could not load font at {fontPath} - falling back to Courier New")
 	if fontID != -1:
 		family = QFontDatabase.applicationFontFamilies(fontID)[0]
 	else:
@@ -292,19 +302,20 @@ class QuiverDialog(QDialog):
 
 	@staticmethod
 	def ask(title: str, message: str, font: QFont, parent=None, showSave=False):
-		dialog = QuiverDialog(title, message, font, parent, showSave)
-		if parent:
-			geo = parent.geometry()
+		host = parent.window() if parent is not None else None
+		dialog = QuiverDialog(title, message, font, host, showSave)
+		if host is not None:
+			geo = host.geometry()
 			dialog.move(
 				geo.x() + (geo.width() - dialog.width()) // 2,
 				geo.y() + (geo.height() - dialog.height()) // 2
 			)
 		dialog.exec()
 		outcome = dialog.outcome
-		if parent and hasattr(parent, "views"):
-			panes = parent.views.paneContainer.paneViews
+		if host is not None and hasattr(host, "views"):
+			panes = host.views.paneContainer.paneViews
 			if panes:
-				activeIndex = parent.editor.activePane
+				activeIndex = host.editor.activePane
 				if 0 <= activeIndex < len(panes):
 					panes[activeIndex].setFocus()
 		return outcome
@@ -352,7 +363,8 @@ class MainWindow(QMainWindow):
 		splitter.addWidget(self.explorer)
 		splitter.addWidget(self.views)
 		splitter.setStretchFactor(1, 1)
-		splitter.setSizes([200, 9999])
+		splitter.setChildrenCollapsible(False)
+		splitter.setSizes([240, 9999])
 
 		self.statusBarWidget = StatusBar(appFont)
 		for sig in (
@@ -372,7 +384,7 @@ class MainWindow(QMainWindow):
 		self.border.raise_()
 
 		self.setWindowTitle("QUIVER")
-		self.setWindowIcon(QIcon("assets/icons/quiver.png"))
+		self.setWindowIcon(QIcon(str(ROOT / "assets" / "icons" / "quiver.png")))
 		self.resize(1280, 720)
 		self.setMinimumSize(800, 550)
 
@@ -435,19 +447,18 @@ class MainWindow(QMainWindow):
 				event.ignore()
 				return
 			if outcome == "save":
-				from commands.fileCommands import save
+				from commands.tabCommands import saveBufferToDisk
 				for buffer in unsaved:
-					if buffer.filename:
-						from util.fileio import saveFile
-						saveFile(buffer.filename, buffer.lines)
-						buffer.modified = False
-					else:
-						self.editor.pane.buffer = buffer
-						save(self.editor)
+					if not saveBufferToDisk(self.editor, buffer, self):
+						event.ignore()
+						return
 		if self.editor.settings.sessionRestoreEnabled:
+			saved = [b for b in self.editor.buffers if b.filename]
+			current = self.editor.pane.buffer
 			session = {
-				"buffers": [b.filename for b in self.editor.buffers if b.filename],
-				"activeIndex": self.editor.currentBuffer,
+				"buffers": [b.filename for b in saved],
+				"activeIndex": next((i for i, b in enumerate(saved) if b is current), 0),
+				"activePath": current.filename,
 			}
 			self.editor.settings.set("session", session)
 		self.editor.saveConfig()
@@ -481,7 +492,10 @@ class MainWindow(QMainWindow):
 		super().showEvent(event)
 		self.border.resize(self.centralWidget().size())
 		self.border.raise_()
-		self.views.paneContainer.paneViews[0].setFocus()
+		panes = self.views.paneContainer.paneViews
+		index = self.editor.activePane
+		if panes:
+			panes[index if 0 <= index < len(panes) else 0].setFocus()
 
 	def mousePressEvent(self, event):
 		if event.button() == Qt.MouseButton.LeftButton:
@@ -549,22 +563,12 @@ class MainWindow(QMainWindow):
 		super().mouseReleaseEvent(event)
 
 	def newFileQt(self):
-		if self.pane.buffer.modified:
-			outcome = QuiverDialog.ask(
-			"UNSAVED CHANGES",
-			f"'{self.pane.buffer.name}' has unsaved changes. Would you like to create a new file anyway?",
-			self.appFont, self
-			)
-			if outcome != "yes":
-				return
+		# A new file opens as a new tab, so there is nothing to lose and nothing to confirm.
 		from core.buffer import Buffer
-		buffer = Buffer(editor=self, language=self.languageRegistry.get("text"))
+		from commands.tabCommands import switchToBuffer
+		buffer = Buffer(editor=self.editor, language=self.editor.languageRegistry.get("text"))
 		self.editor.buffers.append(buffer)
-		self.editor.currentBuffer = len(self.editor.buffers) - 1
-		self.editor.pane.buffer = buffer
-		self.editor.pane.cursorX = 0
-		self.editor.pane.cursorY = 0
-		self.editor.notifyChanged()
+		switchToBuffer(self.editor, len(self.editor.buffers) - 1)
 
 	def toggleZenMode(self):
 		zen = not getattr(self, "zenMode", False)
@@ -598,12 +602,22 @@ class MainWindow(QMainWindow):
 		self.titleBar.titleLabel.setText(f"QUIVER | {name}{modified}")
 
 if __name__ == "__main__":
+	if getattr(sys, "frozen", False):
+		# launched from rofi/desktop the cwd is $HOME; make relative paths (config/, assets/...) resolve like they do in dev
+		os.chdir(ROOT)
+
 	def loadAppIcon():
-		iconPath = "assets/icons/quiver.png"
+		iconPath = str(ROOT / "assets" / "icons" / "quiver.png")
 		if os.path.exists(iconPath):
 			return QIcon(iconPath)
 		return QIcon()
 	
+	import traceback
+	def logUncaught(excType, exc, tb):
+		# PyQt6 calls abort() on exceptions escaping a slot unless a hook is installed
+		traceback.print_exception(excType, exc, tb)
+	sys.excepthook = logUncaught
+
 	app = QApplication(sys.argv)
 	appFont = loadAppFont()
 	app.setFont(appFont)
@@ -637,10 +651,21 @@ if __name__ == "__main__":
 			for path in session["buffers"]:
 				if path and os.path.exists(path):
 					openFileBuffer(window.editor, path)
-			activeIndex = session.get("activeIndex", 0)
-			if 0 <= activeIndex < len(window.editor.buffers):
-				window.editor.currentBuffer = activeIndex
-				window.editor.pane.buffer = window.editor.buffers[activeIndex]
+			from commands.tabCommands import switchToBuffer
+			buffers = window.editor.buffers
+			first = buffers[0] if buffers else None
+			if first is not None and len(buffers) > 1 and not first.filename and not first.modified and first.lines == [""]:
+				buffers.pop(0)
+			index = None
+			target = session.get("activePath")
+			if target:
+				for i, b in enumerate(buffers):
+					if b.filename and os.path.abspath(b.filename) == os.path.abspath(target):
+						index = i
+			if index is None:
+				index = session.get("activeIndex", 0)
+			if 0 <= index < len(buffers):
+				switchToBuffer(window.editor, index)
 	window.setWindowIcon(icon)
 	window.show()
 	window.editor.resize(window.width(), window.height())

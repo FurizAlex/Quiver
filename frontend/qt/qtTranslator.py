@@ -15,11 +15,18 @@ def translateKey(event):
 		Qt.Key.Key_Return:		"ENTER",
 		Qt.Key.Key_Enter:		"ENTER",
 		Qt.Key.Key_Tab: 		"TAB",
+		Qt.Key.Key_Backtab:		"TAB",
+		Qt.Key.Key_Delete:		"DELETE",
+		Qt.Key.Key_Insert:		"INSERT",
 		Qt.Key.Key_Escape:		"ESC"
 	}
 	ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
 	shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
 	alt = bool(event.modifiers() & Qt.KeyboardModifier.AltModifier)
+
+	# Qt reports Shift+Tab as Key_Backtab (usually without the Shift flag set)
+	if event.key() == Qt.Key.Key_Backtab:
+		shift = True
 
 	if event.key() in keymap:
 		key = keymap[event.key()]
@@ -35,6 +42,8 @@ def translateKey(event):
 		key = "/"
 	elif ctrl and event.key() == Qt.Key.Key_Backspace:
 		key = "BACKSPACE"
+	elif alt and not ctrl and Qt.Key.Key_1 <= event.key() <= Qt.Key.Key_9:
+		key = chr(event.key())
 	else:
 		key = event.text()
 
