@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Quiver with PyInstaller and install it so rofi (drun) can launch it.
+# Build Quiver with PyInstaller.
 # Put this file in the project root, next to Quiver.spec, then run:  ./build-and-install.sh
 set -euo pipefail
 cd "$(dirname "$0")"
