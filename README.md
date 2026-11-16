@@ -25,23 +25,23 @@ note: You may need pyinstaller or other python related packages
 ## Layout
 ```
 | .quiver
-├─ assets
-|  ├─ background
-|  ├─ fonts
-|  └─ icons
-├─ build
-├─ commands
-├─ configs
-├─ core
-├─ dist
-├─ docs
-├─ frontend
-├─ input
-├─ plugins
-├─ syntax
-├─ themes
-├─ ui
-└─ util
+├─ assets              Assets for the entire project
+|  ├─ background       Background images for themes
+|  ├─ fonts            Fonts for themes
+|  └─ icons            Icons for themes & project as a whole
+├─ build               The Packaged Executable
+├─ commands            Parsing Commands Handler
+├─ configs             Config Manager & Settings
+├─ core                Execution Part of the Project
+├─ dist                Executable Home
+├─ docs                Documentation
+├─ frontend            Frontend App Handler
+├─ input               Keybinds & Input Modes
+├─ plugins             Plugins
+├─ syntax              Lexer & Language Registry
+├─ themes              Theme Handler
+├─ ui                  UI Handler
+└─ util                Utilities
 ```
 
 More will posted here, later!
