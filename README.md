@@ -22,6 +22,28 @@ chmod +x ./Quiver
 ```
 note: You may need pyinstaller or other python related packages
 
+## Layout
+```
+| .quiver
+├─ assets
+|  ├─ background
+|  ├─ fonts
+|  └─ icons
+├─ build
+├─ commands
+├─ configs
+├─ core
+├─ dist
+├─ docs
+├─ frontend
+├─ input
+├─ plugins
+├─ syntax
+├─ themes
+├─ ui
+└─ util
+```
+
 More will posted here, later!
 
 <img width="2000" height="1000" alt="QuiverHeader" src="https://github.com/user-attachments/assets/1ed30eeb-f47a-4019-9337-af353dc89a74" />
